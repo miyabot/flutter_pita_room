@@ -1,4 +1,5 @@
 import 'package:bomb_chat/screens/profile_setup_screen.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,13 +9,18 @@ import 'providers.dart';
 import 'screens/login_screen.dart';
 import 'screens/room_list_screen.dart';
 
+import 'package:device_preview/device_preview.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
   runApp(
-    const ProviderScope(child: MyApp()),
+    DevicePreview(
+      enabled: !kReleaseMode,
+      builder: (context)=>const ProviderScope(child: MyApp())
+    )
   );
 }
 
@@ -28,6 +34,8 @@ class MyApp extends ConsumerWidget {
     final authState = ref.watch(authStateProvider);
 
     return MaterialApp(
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
       debugShowCheckedModeBanner: false,
       title: 'Bomb Chat',
       theme: ThemeData(
