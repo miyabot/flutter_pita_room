@@ -68,90 +68,106 @@ class RoomModel {
 }
 
 /// [GameState] はルーム内における「ボムゲーム（爆弾ゲーム）」の現在の進行状況を表します。
+/// [GameState] はルーム内における共通点探しゲームの現在の進行状況を表します。
 class GameState {
-  /// ゲームのステータス（例：'waiting'（待機中）、'questioning'（出題中）、'voting'（投票中）、'result'（結果発表））。
+  /// ゲームのステータス
+  /// 'waiting'（待機中）/ 'playing'（ゲーム中）/ 'result'（結果発表）
   final String status;
 
-  /// 現在お題（質問）のターゲット（回答者）として指名されているユーザーの UID。
-  final String targetUser;
+  /// 現在何問目か（0〜4）
+  final int currentQuestion;
 
-  /// ターゲットユーザーに対するアクティブなお題（質問内容）。
-  final String question;
+  /// 全部で何問か（5固定）
+  final int totalQuestions;
 
-  /// 他のユーザーからの投票を記録する Map。投票者の UID をキーとし、値は真偽値（例：正解なら true、不正解なら false）。
-  final Map<String, bool> votes;
+  /// 各ユーザーの回答を記録するMap
+  /// キー：uid　値：選択肢のインデックス（0〜3）
+  /// 全員が回答したら次の問題へ進む
+  final Map<String, int> answers;
 
-  /// 導火線がトリガーされた（不正解と判定された）現在のカウント。
-  final int fuseCount;
+  /// ユーザー間のマッチングスコアを記録するMap
+  /// キー：'uid001_uid002'　値：一致した回数
+  final Map<String, int> scores;
 
-  /// 爆弾が爆発するまでの導火線トリガー（不正解）の最大数。
-  final int maxFuse;
-
-  /// 結果画面を閉じたメンバーの UID リスト。
-  final List<String> closedMembers;
-
-  /// ゲームに参加しているメンバーの UID リスト
+  /// 今チャット画面を開いているメンバーのUIDリスト
+  /// ゲームの参加者はこのリストを使う
   final List<String> activeMembers;
 
-  /// 現在ターンの回答テキスト（投票時に参照してサマリー保存に使う）
-  final String currentAnswer;
+  /// 結果画面を閉じたメンバーのUIDリスト
+  /// 全員が閉じたらendGame()を呼ぶ
+  final List<String> closedMembers;
 
-  /// このゲームセッションで積み上がったラウンドデータ（爆発時にまとめてメッセージ化）
+  /// 各問題の回答履歴
+  /// ゲーム終了後も確認できるように保存する
+  /// 各要素の構造：
+  /// {
+  ///   'question': 'お題のテキスト',
+  ///   'choices':  ['選択肢1', '選択肢2', '選択肢3', '選択肢4'],
+  ///   'answers':  {'uid001': 0, 'uid002': 2, ...}
+  /// }
   final List<Map<String, dynamic>> rounds;
 
   const GameState({
     required this.status,
-    required this.targetUser,
-    required this.question,
-    required this.votes,
-    required this.fuseCount,
-    required this.maxFuse,
-    required this.closedMembers,
+    required this.currentQuestion,
+    required this.totalQuestions,
+    required this.answers,
+    required this.scores,
     required this.activeMembers,
-    this.currentAnswer = '',
+    required this.closedMembers,
     this.rounds = const [],
   });
 
-  /// Firestore から取得した Map から [GameState] を生成するファクトリコンストラクタ。
+  /// Firestoreから取得したMapからGameStateを生成するファクトリコンストラクタ
   factory GameState.fromMap(Map<String, dynamic> map) {
-    final votesMap = map['votes'] as Map<String, dynamic>? ?? {};
-    final typedVotes = votesMap.map((key, value) => MapEntry(key, value as bool));
+    // activeMembers: List<dynamic> → List<String>に変換
+    final activeRaw = map['activeMembers'] as List<dynamic>? ?? [];
+    final activeList = activeRaw.map((e) => e.toString()).toList();
 
+    // closedMembers: List<dynamic> → List<String>に変換
     final closedRaw = map['closedMembers'] as List<dynamic>? ?? [];
     final closedList = closedRaw.map((e) => e.toString()).toList();
 
-    final activeRow = map['activeMembers'] as List<dynamic>? ?? [];
-    final activeList = activeRow.map((e)=>e.toString()).toList();
+    // answers: Map<String, dynamic> → Map<String, int>に変換
+    final answersRaw = map['answers'] as Map<String, dynamic>? ?? {};
+    final answers = answersRaw.map(
+      (key, value) => MapEntry(key, value as int),
+    );
+
+    // scores: Map<String, dynamic> → Map<String, int>に変換
+    final scoresRaw = map['scores'] as Map<String, dynamic>? ?? {};
+    final scores = scoresRaw.map(
+      (key, value) => MapEntry(key, value as int),
+    );
+
+    // rounds: List<dynamic> → List<Map<String, dynamic>>に変換
+    final roundsList = (map['rounds'] as List<dynamic>? ?? [])
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
 
     return GameState(
-      status: map['status'] as String? ?? 'waiting',
-      targetUser: map['targetUser'] as String? ?? '',
-      question: map['question'] as String? ?? '',
-      votes: typedVotes,
-      fuseCount: map['fuseCount'] as int? ?? 0,
-      maxFuse: map['maxFuse'] as int? ?? 5,
-      closedMembers: closedList,
-      activeMembers: activeList,
-      currentAnswer: map['currentAnswer'] as String? ?? '',
-      rounds: (map['rounds'] as List<dynamic>? ?? [])
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList(),
+      status:          map['status']          as String? ?? 'waiting',
+      currentQuestion: map['currentQuestion'] as int?    ?? 0,
+      totalQuestions:  map['totalQuestions']  as int?    ?? 5,
+      answers:         answers,
+      scores:          scores,
+      activeMembers:   activeList,
+      closedMembers:   closedList,
+      rounds:          roundsList,
     );
   }
 
-  /// [GameState] を Firestore アップデート用の Map に変換します。
+  /// GameStateをFirestore書き込み用のMapに変換する
   Map<String, dynamic> toMap() {
     return {
-      'status': status,
-      'targetUser': targetUser,
-      'question': question,
-      'votes': votes,
-      'fuseCount': fuseCount,
-      'maxFuse': maxFuse,
-      'closedMembers': closedMembers,
-      'activeMembers': activeMembers,
-      'currentAnswer': currentAnswer,
-      'rounds': rounds,
+      'status':          status,
+      'currentQuestion': currentQuestion,
+      'totalQuestions':  totalQuestions,
+      'answers':         answers,
+      'scores':          scores,
+      'activeMembers':   activeMembers,
+      'closedMembers':   closedMembers,
+      'rounds':          rounds,
     };
   }
 }

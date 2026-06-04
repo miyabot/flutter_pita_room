@@ -1,4 +1,4 @@
-package com.example.bomb_chat
+package com.miyamoto.bomb_app
 
 import io.flutter.embedding.android.FlutterActivity
 

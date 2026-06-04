@@ -87,18 +87,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         final rawStatus = gameState.status;
         final members = room.members;
 
-        final targetUser = gameState.targetUser;
-        final question = gameState.question;
         final currentUid = ref.read(authProvider).currentUser?.uid;
 
-        final targetNameAsync = ref.watch(userNameProvider(targetUser));
-        final targetNameSnapshot = targetNameAsync.value;
-        final targetDisplayName = (targetNameSnapshot == null || targetNameSnapshot.isEmpty)
-            ? '相手'
-            : targetNameSnapshot;
-
-        final isTarget = targetUser == currentUid;
-        final hasVoted = gameState.votes.containsKey(currentUid);
 
         final closedMembers = gameState.closedMembers;
         final hasClosedResult = closedMembers.contains(currentUid);
@@ -153,7 +143,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       }
                       ref.read(gameNotifierProvider.notifier).startGame(
                         widget.roomId,
-                        gameState.activeMembers,
                       );
                     },
                   )
@@ -164,7 +153,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     onPressed: () {
                       ref.read(gameNotifierProvider.notifier).endGame(
                         widget.roomId,
-                        gameState.activeMembers,
                       );
                     },
                   ),
@@ -294,7 +282,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             body: Column(
               children: [
                 // ─── 出題パネル ───
-                if (status == 'questioning')
+                if (status == 'playing')
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: const BoxDecoration(
@@ -303,72 +291,100 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         bottom: BorderSide(color: Color(0xFFFFA502), width: 2),
                       ),
                     ),
-                    child: isTarget
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Row(
-                                children: [
-                                  const Text('🎯', style: TextStyle(fontSize: 18)),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'お題：$question',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                        color: Color(0xFFFFA502),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // 進捗表示
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${gameState.currentQuestion + 1} / ${gameState.totalQuestions}問',
+                              style: const TextStyle(
+                                color: Color(0xFFFFA502),
+                                fontWeight: FontWeight.bold,
                               ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: _messageController,
-                                decoration: const InputDecoration(
-                                  labelText: '回答を入力してください',
-                                  prefixIcon: Icon(Icons.edit_note),
-                                ),
+                            ),
+                            // 自分が回答済みか表示
+                            if (gameState.answers.containsKey(currentUid))
+                              const Text(
+                                '✅ 回答済み',
+                                style: TextStyle(color: Color(0xFF4CAF50), fontSize: 12),
+                              )
+                            else
+                              const Text(
+                                '回答してください',
+                                style: TextStyle(color: Color(0xFFB0B0C0), fontSize: 12),
                               ),
-                              const SizedBox(height: 12),
-                              ElevatedButton(
-                                onPressed: () {
-                                  final answerText = _messageController.text.trim();
-                                  if (answerText.isEmpty) return;
-                                  _messageController.clear();
-                                  ref.read(gameNotifierProvider.notifier)
-                                      .startVoting(widget.roomId, answerText);
-                                },
-                                child: const Text('回答する'),
-                              ),
-                            ],
-                          )
-                        : const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Color(0xFFFFA502),
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              Text(
-                                'ターゲットユーザーの回答を待っています...',
-                                style: TextStyle(
-                                  fontStyle: FontStyle.italic,
-                                  color: Color(0xFFB0B0C0),
-                                ),
-                              ),
-                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // お題
+                        Text(
+                          kQuestions[gameState.currentQuestion]['question'] as String,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: Colors.white,
                           ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // 4択ボタン
+                        ...(kQuestions[gameState.currentQuestion]['choices'] as List)
+                            .asMap()
+                            .entries
+                            .map((entry) {
+                          final index = entry.key;
+                          final choice = entry.value as String;
+                          final hasAnswered = gameState.answers.containsKey(currentUid);
+                          final myAnswer = gameState.answers[currentUid];
+                          final isSelected = myAnswer == index;
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: ElevatedButton(
+                              onPressed: hasAnswered
+                                  ? null  // 回答済みなら押せない
+                                  : () async {
+                                      if (currentUid == null) return;
+                                      await ref.read(gameNotifierProvider.notifier)
+                                          .submitAnswer(
+                                            widget.roomId,
+                                            currentUid,
+                                            index,
+                                            gameState.activeMembers,
+                                          );
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isSelected
+                                    ? const Color(0xFFFFA502)
+                                    : const Color(0xFF252540),
+                                foregroundColor: Colors.white,
+                              ),
+                              child: Text(choice),
+                            ),
+                          );
+                        }),
+
+                        const SizedBox(height: 8),
+
+                        // 何人が回答済みか表示
+                        Text(
+                          '${gameState.answers.length} / ${gameState.activeMembers.length}人が回答済み',
+                          style: const TextStyle(
+                            color: Color(0xFFB0B0C0),
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
 
                 // ─── チャット一覧 ───
-                if (status == 'waiting' || status == 'questioning')
+                if (status == 'waiting' || status == 'playing')
                   Expanded(
                     child: messageState.when(
                       data: (messages) {
@@ -385,134 +401,207 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
                             final avatarUrl = ref.watch(userAvatarProvider(message.uid)).value ?? '';
 
-
-                            // ゲームセッションカード（全ラウンドをまとめて折りたたみ表示）
                             if (message.type == 'game_session') {
-                              final isExpanded = _expandedAnswers.contains(message.id);
-                              final rounds = message.rounds;
-                              return Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF0D1526),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: const Color(0xFF4488CC), width: 1.5),
+    final isExpanded = _expandedAnswers.contains(message.id);
+    final rounds = message.rounds;
+    final scores = message.scores;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D1526),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF4488CC), width: 1.5),
+      ),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            if (isExpanded) {
+              _expandedAnswers.remove(message.id);
+            } else {
+              _expandedAnswers.add(message.id);
+            }
+          });
+        },
+        borderRadius: BorderRadius.circular(11),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ヘッダー
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Row(
+                children: [
+                  const Text('🎮', style: TextStyle(fontSize: 13)),
+                  const SizedBox(width: 6),
+                  Text(
+                    'ゲーム結果（${rounds.length}問）',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF4488CC),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  AnimatedRotation(
+                    turns: isExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down,
+                      color: Color(0xFF4488CC),
+                      size: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // 展開時
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              child: isExpanded
+                  ? Column(
+                      children: [
+                        const Divider(color: Color(0xFF1A2A3A), height: 1),
+                        // マッチング結果
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'マッチング結果',
+                                style: TextStyle(
+                                  color: Color(0xFF4488CC),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
                                 ),
-                                child: InkWell(
-                                  onTap: () {
-                                    setState(() {
-                                      if (isExpanded) {
-                                        _expandedAnswers.remove(message.id);
-                                      } else {
-                                        _expandedAnswers.add(message.id);
-                                      }
-                                    });
-                                  },
-                                  borderRadius: BorderRadius.circular(11),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                              ),
+                              const SizedBox(height: 6),
+                              ...scores.entries.map((entry) {
+                                final keys    = entry.key.split('_');
+                                final uid1    = keys[0];
+                                final uid2    = keys[1];
+                                final score   = entry.value;
+                                final total   = rounds.length;
+                                final percent = total > 0
+                                    ? (score / total * 100).round()
+                                    : 0;
+                                final name1 = ref.watch(userNameProvider(uid1)).value ?? '...';
+                                final name2 = ref.watch(userNameProvider(uid2)).value ?? '...';
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: Row(
                                     children: [
-                                      // ヘッダー（常に表示）
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                      Text(
+                                        '$name1 × $name2',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      Text(
+                                        '$percent%',
+                                        style: TextStyle(
+                                          color: percent >= 60
+                                              ? const Color(0xFF4CAF50)
+                                              : const Color(0xFFB0B0C0),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                        const Divider(color: Color(0xFF1A2A3A), height: 1),
+                        // 各問の回答
+                        ...rounds.asMap().entries.map((entry) {
+                          final i       = entry.key;
+                          final round   = entry.value;
+                          final question = round['question'] as String? ?? '';
+                          final choices  = round['choices']  as List<dynamic>? ?? [];
+                          final answers  = round['answers']  as Map<String, dynamic>? ?? {};
+                          final isLast   = i == rounds.length - 1;
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.fromLTRB(14, 10, 14, isLast ? 14 : 6),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      question,
+                                      style: const TextStyle(
+                                        color: Color(0xFFFFA502),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    ...answers.entries.map((answer) {
+                                      final uid         = answer.key;
+                                      final choiceIndex = answer.value as int;
+                                      final choiceText  = choiceIndex < choices.length
+                                          ? choices[choiceIndex] as String
+                                          : '?';
+                                      final userName = ref.watch(userNameProvider(uid)).value ?? '...';
+
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 4),
                                         child: Row(
                                           children: [
-                                            const Text('🎮', style: TextStyle(fontSize: 13)),
-                                            const SizedBox(width: 6),
                                             Text(
-                                              'ゲーム（${rounds.length}ターン）',
+                                              userName,
                                               style: const TextStyle(
-                                                fontSize: 13,
-                                                color: Color(0xFF4488CC),
+                                                color: Colors.white,
                                                 fontWeight: FontWeight.bold,
+                                                fontSize: 12,
                                               ),
                                             ),
-                                            const Spacer(),
-                                            AnimatedRotation(
-                                              turns: isExpanded ? 0.5 : 0,
-                                              duration: const Duration(milliseconds: 200),
-                                              child: const Icon(
-                                                Icons.keyboard_arrow_down,
-                                                color: Color(0xFF4488CC),
-                                                size: 18,
+                                            const Text('：',
+                                              style: TextStyle(color: Color(0xFFB0B0C0)),
+                                            ),
+                                            Text(
+                                              choiceText,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
                                               ),
                                             ),
                                           ],
                                         ),
-                                      ),
-                                      // 展開時：全ラウンドをリスト表示
-                                      AnimatedSize(
-                                        duration: const Duration(milliseconds: 200),
-                                        curve: Curves.easeInOut,
-                                        child: isExpanded
-                                            ? Column(
-                                                children: [
-                                                  const Divider(color: Color(0xFF1A2A3A), height: 1),
-                                                  // asMap() でインデックス付きMapに変換→ entries で1件ずつ取り出す
-                                                  // （インデックスが必要なのは isLast の判定のためだけ）
-                                                  // ... はリストをバラして children に直接追加するスプレッド演算子
-                                                  ...rounds.asMap().entries.map((entry) {
-                                                    final i = entry.key;   // インデックス（0, 1, 2...）
-                                                    final round = entry.value; // ラウンドデータのMap
-
-                                                    // Mapから各値を取り出す（as型? で型指定、nullなら??でデフォルト値）
-                                                    final roundUid    = round['uid']            as String? ?? '';
-                                                    final roundAnswer = round['answer']         as String? ?? '';
-                                                    final correct     = round['correctVotes']   as int?    ?? 0;
-                                                    final incorrect   = round['incorrectVotes'] as int?    ?? 0;
-
-                                                    // 最後のラウンドか判定（区切り線と余白の出し分けに使う）
-                                                    final isLast = i == rounds.length - 1;
-
-                                                    // uidからユーザー名をリアルタイム取得（取れるまで '...' を表示）
-                                                    final roundName = ref.watch(userNameProvider(roundUid)).value ?? '...';
-
-                                                    return Column(
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                      children: [
-                                                        Padding(
-                                                          // 最後のラウンドだけ下余白を大きくする
-                                                          padding: EdgeInsets.fromLTRB(14, 10, 14, isLast ? 14 : 6),
-                                                          child: Column(
-                                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                                            children: [
-                                                              // 1行目：「PlayerA：ラーメンです！」
-                                                              Row(
-                                                                children: [
-                                                                  Text(roundName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                                                                  const Text('：', style: TextStyle(color: Color(0xFFB0B0C0))),
-                                                                  // Expanded で残り幅を使って回答テキストを表示
-                                                                  Expanded(child: Text(roundAnswer, style: const TextStyle(color: Colors.white, fontSize: 13))),
-                                                                ],
-                                                              ),
-                                                              const SizedBox(height: 4),
-                                                              // 2行目：「✅ 正解：2  ❌ 不正解：1」
-                                                              Row(
-                                                                children: [
-                                                                  const Text('✅ 正解：', style: TextStyle(color: Color(0xFF4CAF50), fontSize: 12)),
-                                                                  Text('$correct', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                                                                  const SizedBox(width: 12),
-                                                                  const Text('❌ 不正解：', style: TextStyle(color: Color(0xFFE53935), fontSize: 12)),
-                                                                  Text('$incorrect', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                                                                ],
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                        // 最後以外のラウンドの間に区切り線を入れる
-                                                        if (!isLast)
-                                                          const Divider(color: Color(0xFF1A2A3A), height: 1, indent: 14, endIndent: 14),
-                                                      ],
-                                                    );
-                                                  }),
-                                                ],
-                                              )
-                                            : const SizedBox.shrink(),
-                                      ),
-                                    ],
-                                  ),
+                                      );
+                                    }),
+                                  ],
                                 ),
-                              );
-                            }
+                              ),
+                              if (!isLast)
+                                const Divider(
+                                  color: Color(0xFF1A2A3A),
+                                  height: 1,
+                                  indent: 14,
+                                  endIndent: 14,
+                                ),
+                            ],
+                          );
+                        }),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
                             // 通常チャット
                             return Padding(
@@ -591,127 +680,95 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     ),
                   ),
 
-                // ─── 投票パネル ───
-                if (status == 'voting')
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF0D0D2E),
-                      border: Border(
-                        bottom: BorderSide(color: Color(0xFF7B68EE), width: 2),
-                      ),
-                    ),
-                    child: isTarget
-                        ? const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Color(0xFF7B68EE),
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              Text(
-                                '他のプレイヤーの投票結果を待っています...',
-                                style: TextStyle(color: Color(0xFFB0B0C0)),
-                              ),
-                            ],
-                          )
-                        : Column(
-                            children: [
-                              const Text(
-                                '回答はどうでしたか？\nお題に対して正しい回答だったか投票してください',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.white, fontSize: 14),
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  ElevatedButton.icon(
-                                    onPressed: hasVoted
-                                        ? null
-                                        : () async {
-                                            if (currentUid == null) return;
-                                            await ref.read(gameNotifierProvider.notifier).vote(widget.roomId, currentUid, true);
-                                            await ref.read(gameNotifierProvider.notifier).checkVote(widget.roomId, gameState.activeMembers);
-                                          },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF2E7D32),
-                                      foregroundColor: Colors.white,
-                                    ),
-                                    icon: const Text('〇', style: TextStyle(fontSize: 18)),
-                                    label: const Text('正解'),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  OutlinedButton.icon(
-                                    onPressed: hasVoted
-                                        ? null
-                                        : () async {
-                                            if (currentUid == null) return;
-                                            await ref.read(gameNotifierProvider.notifier).vote(widget.roomId, currentUid, false);
-                                            await ref.read(gameNotifierProvider.notifier).checkVote(widget.roomId, gameState.activeMembers);
-                                          },
-                                    icon: const Text('×', style: TextStyle(fontSize: 18)),
-                                    label: const Text('不正解'),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                  ),
-
-                // ─── リザルトパネル ───
                 if (status == 'result')
                   Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: currentUid == targetUser
-                            ? [const Color(0xFF2E0D0D), const Color(0xFF1A0808)]
-                            : [const Color(0xFF0D2E0D), const Color(0xFF081A08)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                    padding: const EdgeInsets.all(16),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF0D1526),
                       border: Border(
-                        bottom: BorderSide(
-                          color: currentUid == targetUser
-                              ? const Color(0xFFE53935)
-                              : const Color(0xFF4CAF50),
-                          width: 2,
-                        ),
+                        bottom: BorderSide(color: Color(0xFF4488CC), width: 2),
                       ),
                     ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          currentUid == targetUser ? '💥 爆発！' : '👑 勝利！',
+                        const Text(
+                          '🎉 結果発表！',
                           style: TextStyle(
-                            fontSize: 28,
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: currentUid == targetUser
-                                ? const Color(0xFFE53935)
-                                : const Color(0xFFFFD700),
+                            color: Colors.white,
                           ),
+                          textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          currentUid == targetUser
-                              ? 'あなたの負けです...'
-                              : '$targetDisplayName の負けです！',
-                          style: const TextStyle(color: Color(0xFFB0B0C0)),
-                        ),
+                        const SizedBox(height: 16),
+
+                        // 全員とのマッチング率を表示
+                        ...gameState.activeMembers
+                            .where((uid) => uid != currentUid)
+                            .map((uid) {
+                          // スコアキーは uid1_uid2 の形式
+                          // uid1 < uid2 になるように並べる
+                          final sortedUids = [currentUid!, uid]..sort();
+                          final key = '${sortedUids[0]}_${sortedUids[1]}';
+
+                          final score = gameState.scores[key] ?? 0;
+                          final total = gameState.totalQuestions;
+                          final percent = (score / total * 100).round();
+
+                          final nameAsync = ref.watch(userNameProvider(uid));
+                          final name = nameAsync.value ?? '...';
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      '$percent%',
+                                      style: TextStyle(
+                                        color: percent >= 60
+                                            ? const Color(0xFF4CAF50)
+                                            : const Color(0xFFB0B0C0),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                // プログレスバー
+                                LinearProgressIndicator(
+                                  value: percent / 100,
+                                  backgroundColor: const Color(0xFF252540),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    percent >= 60
+                                        ? const Color(0xFF4CAF50)
+                                        : const Color(0xFF4488CC),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+
                         const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: () {
                             if (currentUid == null) return;
                             ref.read(gameNotifierProvider.notifier)
-                                .closeResult(widget.roomId, currentUid, members);
+                                .closeResult(widget.roomId, currentUid, gameState.activeMembers);
                           },
-                          child: const Text('リザルトを閉じる'),
+                          child: const Text('結果を閉じる'),
                         ),
                       ],
                     ),

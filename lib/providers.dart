@@ -164,16 +164,14 @@ class RoomNotifier extends Notifier<void> {
       'createdBy': uid,
       'members': [uid],
       'gameState': {
-        'status': 'waiting',
-        'targetUser': '',
-        'question': '',
-        'votes': {},
-        'fuseCount': 0,
-        'maxFuse': 5,
-        'closedMembers': [],
-        'activeMembers': [],
-        'currentAnswer': '',
-        'rounds': [],
+        'status':          'waiting',
+        'currentQuestion': 0,
+        'totalQuestions':  5,
+        'answers':         {},
+        'scores':          {},
+        'activeMembers':   [],
+        'closedMembers':   [],
+        'rounds':          [],
       },
     });
   }
@@ -235,6 +233,31 @@ class RoomNotifier extends Notifier<void> {
 
 final roomNotifierProvider = NotifierProvider<RoomNotifier, void>(RoomNotifier.new);
 
+
+/// お題と選択肢のプリセット
+const List<Map<String, dynamic>> kQuestions = [
+  {
+    'question': '好きな食べ物は？',
+    'choices': ['ラーメン', '寿司', '焼肉', 'カレー'],
+  },
+  {
+    'question': '休日の過ごし方は？',
+    'choices': ['家でゴロゴロ', '外出・買い物', 'スポーツ', '旅行'],
+  },
+  {
+    'question': '好きな季節は？',
+    'choices': ['春', '夏', '秋', '冬'],
+  },
+  {
+    'question': 'ストレス発散方法は？',
+    'choices': ['食べる', '寝る', '運動する', '話す'],
+  },
+  {
+    'question': '朝型・夜型どっち？',
+    'choices': ['完全朝型', 'どちらかといえば朝型', 'どちらかといえば夜型', '完全夜型'],
+  },
+];
+
 /// ゲーム内のお題割り当て・投票集計・ターン遷移・勝敗判定などのゲーム進行ロジックを管理するクラス
 class GameNotifier extends Notifier<void> {
   
@@ -252,154 +275,177 @@ class GameNotifier extends Notifier<void> {
     });
   }
 
-  Future<void> startGame(String roomId, List<String> activeMembers) async {
-    final random = Random();
-    final targetUser = activeMembers[random.nextInt(activeMembers.length)];
-    final questions = [
-      '好きな食べ物は？',
-      '最近嬉しかったことは？',
-      '無人島に持っていくものは？',
-      '尊敬する人は？',
-      '今一番欲しいものは？',
+  Future<void> startGame(String roomId) async {
+    await ref.read(firestoreProvider).collection('rooms').doc(roomId).update({
+      'gameState.status':          'playing',
+          'gameState.currentQuestion': 0,
+          'gameState.totalQuestions':  5,
+          'gameState.answers':         {},
+          'gameState.scores':          {},
+          'gameState.rounds':          [],
+          'gameState.closedMembers':   [],
+    });
+  }
+
+  Future<void> submitAnswer(String roomId,String uid,int answerIndex,List<String> activeMembers)async{
+    final docRef = ref.read(firestoreProvider).collection('rooms').doc(roomId);
+
+    //自分の回答を保存
+    await docRef.update({
+      'gameState.answers.$uid':answerIndex,
+    });
+
+    //最新データを取得して全員が回答したか確認
+    final doc = await docRef.get();
+    final data = doc.data();
+    if(data == null)return;
+
+    final gameState = data['gameState'] as Map<String,dynamic>? ?? {};
+    final answers = gameState['answers'] as Map<String,dynamic>? ?? {};
+
+    //activeMembers全員が回答したか確認
+    final allAnswered = activeMembers.every(
+      (memberId) => answers.containsKey(memberId),
+    );
+
+    if(allAnswered){
+      await nextQuestion(roomId,activeMembers);
+    }
+  }
+
+  //次の問題に進む
+  Future<void> nextQuestion(String roomId,List<String> activeMembers)async{
+    final docRef = ref.read(firestoreProvider).collection('rooms').doc(roomId);
+
+    //最新データの取得
+    final doc = await docRef.get();
+    final data = doc.data();
+    if(data == null) return;
+
+    final gameState  = data['gameState']  as Map<String, dynamic>? ?? {};
+    final currentQ   = gameState['currentQuestion'] as int? ?? 0;
+    final totalQ     = gameState['totalQuestions']  as int? ?? 5;
+    final answersRaw = gameState['answers'] as Map<String, dynamic>? ?? {};
+    final scoresRaw  = gameState['scores']  as Map<String, dynamic>? ?? {};
+    final roundsRaw  = gameState['rounds']  as List<dynamic>? ?? [];
+
+    //今回の問題データを取得
+    final currentQuestionData = kQuestions[currentQ];
+
+    //roundsに今回の回答を追加
+    final newRound = {
+      'question':currentQuestionData['question'],
+      'choices': currentQuestionData['choices'],
+      'answers':answersRaw,
+    };
+
+    final updatedRounds = [
+      ...roundsRaw.map((e) => Map<String, dynamic>.from(e as Map)),
+      newRound,
     ];
-    final selectedQuestion = questions[random.nextInt(questions.length)];
 
-    await ref.read(firestoreProvider).collection('rooms').doc(roomId).update({
-      'gameState.status': 'questioning',
-      'gameState.targetUser': targetUser,
-      'gameState.question': selectedQuestion,
-      'gameState.fuseCount': 0,
-      'gameState.maxFuse': 5,
-      'gameState.votes': {},
-      'gameState.closedMembers': [],
-    });
+    // スコアを更新（2人ずつ比較して一致していたら+1）
+    final updatedScores = Map<String, int>.from(
+      scoresRaw.map((key, value) => MapEntry(key, value as int)),
+    );
+
+    for (int i = 0; i < activeMembers.length; i++) {
+      for (int j = i + 1; j < activeMembers.length; j++) {
+        final uid1 = activeMembers[i];
+        final uid2 = activeMembers[j];
+        final sortedUids = [uid1, uid2]..sort();
+        final key = '${sortedUids[0]}_${sortedUids[1]}';
+
+        // 同じ選択肢を選んでいたらスコア+1
+        if (answersRaw[uid1] == answersRaw[uid2]) {
+          updatedScores[key] = (updatedScores[key] ?? 0) + 1;
+        }
+      }
+    }
+
+    final isLastQuestion = currentQ + 1 >= totalQ;
+
+    if (isLastQuestion) {
+      // 5問終わったのでresultへ
+      await docRef.update({
+        'gameState.status':          'result',
+        'gameState.rounds':          updatedRounds,
+        'gameState.scores':          updatedScores,
+        'gameState.answers':         {},
+        'gameState.closedMembers':   [],
+      });
+    } else {
+      // 次の問題へ
+      await docRef.update({
+        'gameState.currentQuestion': currentQ + 1,
+        'gameState.answers':         {},
+        'gameState.rounds':          updatedRounds,
+        'gameState.scores':          updatedScores,
+      });
+    }
   }
 
-  Future<void> startVoting(String roomId, String answerText) async {
-    await ref.read(firestoreProvider).collection('rooms').doc(roomId).update({
-      'gameState.status': 'voting',
-      'gameState.currentAnswer': answerText, // 投票完了時のサマリー保存に使う
-    });
-  }
-
-  Future<void> vote(String roomId, String uid, bool isCorrect) async {
+  /// ゲーム終了処理
+  /// waitingに戻してデータをリセットする
+  Future<void> endGame(String roomId) async {
     await ref.read(firestoreProvider)
         .collection('rooms')
         .doc(roomId)
         .update({
-          'gameState.votes.$uid': isCorrect,
+          'gameState.status':          'waiting',
+          'gameState.currentQuestion': 0,
+          'gameState.answers':         {},
+          'gameState.scores':          {},
+          'gameState.rounds':          [],
+          'gameState.closedMembers':   [],
         });
   }
 
-  /// 投票の完了を検知し、爆発または次のターンへのゲーム状態遷移を判定する
-  Future<void> checkVote(String roomId, List<String> activeMembers) async {
-    final doc = await ref.read(firestoreProvider).collection('rooms').doc(roomId).get();
-    final data = doc.data();
-    if (data == null) return;
-    
-    final gameState = data['gameState'] as Map<String, dynamic>? ?? {};
-    final votes = gameState['votes'] as Map<String, dynamic>? ?? {};
-    final fuseCount = gameState['fuseCount'] as int? ?? 0;
-    final maxFuse = gameState['maxFuse'] as int? ?? 5;
-    final targetUser = gameState['targetUser'] as String? ?? '';
+  /// ユーザーが結果画面を閉じる処理
+  /// 全員が閉じたらendGame()を呼ぶ
+  Future<void> closeResult(
+  String roomId,
+  String uid,
+  List<String> activeMembers,
+) async {
+  final docRef = ref.read(firestoreProvider)
+      .collection('rooms')
+      .doc(roomId);
 
-    // 回答者以外のメンバーの投票が完了したかを判定
-    final voters = activeMembers.where((uid) => uid != targetUser).toList();
-    if (votes.length < voters.length) return;
+  await docRef.update({
+    'gameState.closedMembers': FieldValue.arrayUnion([uid]),
+  });
 
-    final correctCount = votes.values.where((v) => v == true).length;
-    final missCount = votes.values.where((v) => v == false).length;
-    final newFuseCount = fuseCount + (missCount > 0 ? 1 : 0);
-    final currentAnswer = gameState['currentAnswer'] as String? ?? '';
+  final doc = await docRef.get();
+  final data = doc.data();
+  if (data == null) return;
 
-    // 今回のラウンドデータ（名前はUI側でuidから取得するため uid だけ保存）
-    final existingRounds = (gameState['rounds'] as List<dynamic>? ?? [])
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-    final roundData = {
-      'uid': targetUser,
-      'answer': currentAnswer,
-      'correctVotes': correctCount,
-      'incorrectVotes': missCount,
-    };
-    final updatedRounds = [...existingRounds, roundData];
+  final gameState     = data['gameState'] as Map<String, dynamic>? ?? {};
+  final closedMembers = List<String>.from(gameState['closedMembers'] ?? []);
 
-    if (newFuseCount >= maxFuse) {
-      // 爆発：全ラウンドをまとめて game_session メッセージとして1件保存
-      await ref.read(firestoreProvider)
-          .collection('rooms')
-          .doc(roomId)
-          .collection('messages')
-          .add({
-        'type': 'game_session',
-        'text': '',
-        'uid': '',
-        'email': '',
-        'name': '',
-        'rounds': updatedRounds,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      await ref.read(firestoreProvider).collection('rooms').doc(roomId).update({
-        'gameState.status': 'result',
-        'gameState.fuseCount': newFuseCount,
-        'gameState.closedMembers': [],
-      });
-    } else {
-      // 次のターンへ：ラウンドデータを蓄積してゲーム続行
-      final random = Random();
-      final newTargetUser = activeMembers[random.nextInt(activeMembers.length)];
-      final questions = [
-        '好きな食べ物は？',
-        '最近嬉しかったことは？',
-        '無人島に持っていくものは？',
-        '尊敬する人は？',
-        '今一番欲しいものは？',
-      ];
-      final newQuestion = questions[random.nextInt(questions.length)];
+  final allClosed = activeMembers.every(
+    (m) => closedMembers.contains(m),
+  );
 
-      await ref.read(firestoreProvider).collection('rooms').doc(roomId).update({
-        'gameState.status': 'questioning',
-        'gameState.fuseCount': newFuseCount,
-        'gameState.votes': {},
-        'gameState.targetUser': newTargetUser,
-        'gameState.question': newQuestion,
-        'gameState.rounds': updatedRounds, // ラウンドを蓄積
-      });
-    }
+  if (allClosed) {
+    // ゲーム結果をメッセージとして保存してから終了
+    await ref.read(firestoreProvider)
+        .collection('rooms')
+        .doc(roomId)
+        .collection('messages')
+        .add({
+          'type':      'game_session',
+          'text':      '',
+          'uid':       '',
+          'email':     '',
+          'rounds':    gameState['rounds']  ?? [],
+          'scores':    gameState['scores']  ?? {},
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+    await endGame(roomId);
   }
-
-  Future<void> endGame(String roomId, List<String> members) async {
-    await ref.read(firestoreProvider).collection('rooms').doc(roomId).update({
-      'gameState.status': 'waiting',
-      'gameState.targetUser': '',
-      'gameState.question': '',
-      'gameState.fuseCount': 0,
-      'gameState.maxFuse': 5,
-      'gameState.votes': {},
-      'gameState.closedMembers': [],
-      'gameState.rounds': [], // ラウンドもリセット
-    });
-  }
-
-  /// ユーザー個別で結果表示を閉じる処理（参加メンバー全員が閉じ終えた段階でゲーム終了・初期化状態に戻す）
-  Future<void> closeResult(String roomId, String uid, List<String> members) async {
-    final docRef = ref.read(firestoreProvider).collection('rooms').doc(roomId);
-    await docRef.update({
-      'gameState.closedMembers': FieldValue.arrayUnion([uid]),
-    });
-
-    final doc = await docRef.get();
-    final data = doc.data();
-    if (data == null) return;
-    
-    final gameState = data['gameState'] as Map<String, dynamic>? ?? {};
-    final closedMembers = List<String>.from(gameState['closedMembers'] ?? []);
-
-    final allClosed = members.every((m) => closedMembers.contains(m));
-    if (allClosed) {
-      await endGame(roomId, members);
-    }
-  }
+}
 
   @override
   void build() {}

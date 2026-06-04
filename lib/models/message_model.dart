@@ -29,6 +29,9 @@ class MessageModel {
   /// game_session用：全ラウンドのデータ（name, answer, correctVotes, incorrectVotes）
   final List<Map<String, dynamic>> rounds;
 
+  // フィールドに追加
+  final Map<String, int> scores;
+
   const MessageModel({
     required this.id,
     required this.text,
@@ -38,6 +41,7 @@ class MessageModel {
     this.createdAt,
     this.type = 'chat',
     this.rounds = const [],
+    required this.scores,
   });
 
   /// Firestore の [DocumentSnapshot] から [MessageModel] を生成するファクトリコンストラクタ。
@@ -50,6 +54,10 @@ class MessageModel {
     }
 
     final timestamp = data['createdAt'] as Timestamp?;
+    final scoresRaw = data['scores'] as Map<String, dynamic>? ?? {};
+    final scores = scoresRaw.map(
+      (key, value) => MapEntry(key, value as int),
+    );
 
     return MessageModel(
       id: doc.id,
@@ -62,6 +70,7 @@ class MessageModel {
       rounds: (data['rounds'] as List<dynamic>? ?? [])
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList(),
+      scores: scores,
     );
   }
 
@@ -75,6 +84,7 @@ class MessageModel {
       'type': type,
       'rounds': rounds,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
+      'scores': scores,
     };
   }
 }
