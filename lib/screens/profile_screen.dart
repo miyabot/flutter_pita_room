@@ -39,7 +39,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           decoration: const BoxDecoration(
                             shape: BoxShape.circle,
                             gradient: LinearGradient(
-                              colors: [Color(0xFFE53935), Color(0xFFFF7043)],
+                              colors: [Color(0xFF6A1B9A), Color(0xFFFF7043)],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
@@ -47,7 +47,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           padding: const EdgeInsets.all(3),
                           child: CircleAvatar(
                             radius: 48,
-                            backgroundColor: const Color(0xFF1A1A2E),
+                            backgroundColor: const Color(0xFF1A1030),
                             backgroundImage: userModel.avatarUrl.isNotEmpty ? 
                                               NetworkImage(userModel.avatarUrl) : null,
                             child: _isUploading
@@ -81,7 +81,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             child: Container(
                               padding: EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: Color(0xFFE53935),
+                                color: Color(0xFF6A1B9A),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(Icons.camera_alt,size: 18,color: Colors.white)
@@ -132,7 +132,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           },
                           icon: Icon(
                             _isEditing ? Icons.check_circle : Icons.edit,
-                            color: const Color(0xFFE53935),
+                            color: const Color(0xFF6A1B9A),
                           ),
                         ),
                       ],
@@ -151,9 +151,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1A1A2E),
+                        color: const Color(0xFF1A1030),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFF3D3D5C)),
+                        border: Border.all(color: const Color(0xFF3D2855)),
                       ),
                       child: Row(
                         children: [
@@ -174,7 +174,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 4,
-                                  color: Color(0xFFE53935),
+                                  color: Color(0xFF6A1B9A),
                                 ),
                               ),
                             ],
@@ -203,7 +203,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               );
             },
             loading: () => const Center(
-              child: CircularProgressIndicator(color: Color(0xFFE53935)),
+              child: CircularProgressIndicator(color: Color(0xFF6A1B9A)),
             ),
             error: (error, stack) => Center(child: Text('エラーが発生しました: $error')),
           ),

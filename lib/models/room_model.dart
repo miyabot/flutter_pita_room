@@ -107,6 +107,11 @@ class GameState {
   /// }
   final List<Map<String, dynamic>> rounds;
 
+  /// startGame時にランダム選択された問題インデックスの一覧
+  /// kQuestions（25問）の中から5問分のインデックスが入る
+  /// 例: [3, 12, 7, 21, 18]
+  final List<int> questionIndices;
+
   const GameState({
     required this.status,
     required this.currentQuestion,
@@ -116,6 +121,7 @@ class GameState {
     required this.activeMembers,
     required this.closedMembers,
     this.rounds = const [],
+    this.questionIndices = const [],
   });
 
   /// Firestoreから取得したMapからGameStateを生成するファクトリコンストラクタ
@@ -145,29 +151,36 @@ class GameState {
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
 
+    // questionIndices: List<dynamic> → List<int>に変換
+    final questionIndicesList = (map['questionIndices'] as List<dynamic>? ?? [])
+        .map((e) => e as int)
+        .toList();
+
     return GameState(
-      status:          map['status']          as String? ?? 'waiting',
-      currentQuestion: map['currentQuestion'] as int?    ?? 0,
-      totalQuestions:  map['totalQuestions']  as int?    ?? 5,
-      answers:         answers,
-      scores:          scores,
-      activeMembers:   activeList,
-      closedMembers:   closedList,
-      rounds:          roundsList,
+      status:           map['status']          as String? ?? 'waiting',
+      currentQuestion:  map['currentQuestion'] as int?    ?? 0,
+      totalQuestions:   map['totalQuestions']  as int?    ?? 5,
+      answers:          answers,
+      scores:           scores,
+      activeMembers:    activeList,
+      closedMembers:    closedList,
+      rounds:           roundsList,
+      questionIndices:  questionIndicesList,
     );
   }
 
   /// GameStateをFirestore書き込み用のMapに変換する
   Map<String, dynamic> toMap() {
     return {
-      'status':          status,
-      'currentQuestion': currentQuestion,
-      'totalQuestions':  totalQuestions,
-      'answers':         answers,
-      'scores':          scores,
-      'activeMembers':   activeMembers,
-      'closedMembers':   closedMembers,
-      'rounds':          rounds,
+      'status':           status,
+      'currentQuestion':  currentQuestion,
+      'totalQuestions':   totalQuestions,
+      'answers':          answers,
+      'scores':           scores,
+      'activeMembers':    activeMembers,
+      'closedMembers':    closedMembers,
+      'rounds':           rounds,
+      'questionIndices':  questionIndices,
     };
   }
 }

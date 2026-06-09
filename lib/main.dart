@@ -41,12 +41,12 @@ class MyApp extends ConsumerWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFE53935),
+          seedColor: const Color(0xFF6A1B9A),
           brightness: Brightness.dark,
         ),
-        scaffoldBackgroundColor: const Color(0xFF0D0D1A),
+        scaffoldBackgroundColor: const Color(0xFF0D0A1A),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF1A1A2E),
+          backgroundColor: Color(0xFF1A1030),
           foregroundColor: Colors.white,
           elevation: 0,
           titleTextStyle: TextStyle(
@@ -56,7 +56,7 @@ class MyApp extends ConsumerWidget {
           ),
         ),
         cardTheme: CardThemeData(
-          color: const Color(0xFF1A1A2E),
+          color: const Color(0xFF1A1030),
           elevation: 4,
           shadowColor: Colors.black54,
           shape: RoundedRectangleBorder(
@@ -65,7 +65,7 @@ class MyApp extends ConsumerWidget {
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFE53935),
+            backgroundColor: const Color(0xFF6A1B9A),
             foregroundColor: Colors.white,
             elevation: 0,
             minimumSize: const Size(0, 52),
@@ -80,8 +80,8 @@ class MyApp extends ConsumerWidget {
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Color(0xFFE53935)),
-            foregroundColor: const Color(0xFFE53935),
+            side: const BorderSide(color: Color(0xFF6A1B9A)),
+            foregroundColor: const Color(0xFF6A1B9A),
             minimumSize: const Size(0, 52),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -94,18 +94,18 @@ class MyApp extends ConsumerWidget {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: const Color(0xFF252540),
+          fillColor: const Color(0xFF251840),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF3D3D5C)),
+            borderSide: const BorderSide(color: Color(0xFF3D2855)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF3D3D5C)),
+            borderSide: const BorderSide(color: Color(0xFF3D2855)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE53935), width: 2),
+            borderSide: const BorderSide(color: Color(0xFF6A1B9A), width: 2),
           ),
           labelStyle: const TextStyle(color: Color(0xFFB0B0C0)),
           hintStyle: const TextStyle(color: Color(0xFF6060A0)),
@@ -113,16 +113,16 @@ class MyApp extends ConsumerWidget {
         ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFFFFA502),
+            foregroundColor: const Color(0xFF9C27B0),
           ),
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Color(0xFFE53935),
+          backgroundColor: Color(0xFF6A1B9A),
           foregroundColor: Colors.white,
           elevation: 4,
         ),
         snackBarTheme: SnackBarThemeData(
-          backgroundColor: const Color(0xFF252540),
+          backgroundColor: const Color(0xFF251840),
           contentTextStyle: const TextStyle(color: Colors.white),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(

@@ -24,7 +24,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
           appBar: AppBar(
             title: const Row(
               children: [
-                Text('💣', style: TextStyle(fontSize: 20)),
+                Text('🔮', style: TextStyle(fontSize: 20)),
                 SizedBox(width: 8),
                 Text('ルーム一覧'),
               ],
@@ -54,7 +54,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('💣', style: TextStyle(fontSize: 64)),
+                      const Text('🔮', style: TextStyle(fontSize: 64)),
                       const SizedBox(height: 16),
                       const Text(
                         '参加している部屋がありません',
@@ -93,12 +93,12 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                                 width: 48,
                                 height: 48,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF252540),
+                                  color: const Color(0xFF251840),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Icon(
                                   Icons.meeting_room_rounded,
-                                  color: Color(0xFFE53935),
+                                  color: Color(0xFF6A1B9A),
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -135,7 +135,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
         );
       },
       loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Color(0xFFE53935))),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFF6A1B9A))),
       ),
       error: (error, stack) {
         debugPrint('部屋一覧取得エラー: $error');

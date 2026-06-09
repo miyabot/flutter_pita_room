@@ -82,7 +82,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
               ),
               const SizedBox(height: 40),
               if (_isChecking)
-                const Center(child: CircularProgressIndicator(color: Color(0xFFE53935)))
+                const Center(child: CircularProgressIndicator(color: Color(0xFF6A1B9A)))
               else
                 ElevatedButton(
                   onPressed: _checkVerified,
@@ -90,7 +90,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                 ),
               const SizedBox(height: 12),
               if (_isResending)
-                const Center(child: CircularProgressIndicator(color: Color(0xFFE53935)))
+                const Center(child: CircularProgressIndicator(color: Color(0xFF6A1B9A)))
               else
                 OutlinedButton(
                   onPressed: _resendEmail,

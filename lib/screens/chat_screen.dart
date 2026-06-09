@@ -79,16 +79,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final messageState = ref.watch(messagesProvider(widget.roomId));
-    final roomState = ref.watch(currentRoomStateProvider(widget.roomId));
+    final roomState    = ref.watch(currentRoomStateProvider(widget.roomId));
+    // gameState.activeMembers（Firestore）ではなく RTDB のプレゼンスを参照する
+    // タスクキル時も onDisconnect で自動削除されるため常に正確な値になる
+    final activeMembers = ref.watch(activeMembersProvider(widget.roomId)).value ?? [];
 
     return roomState.when(
       data: (room) {
         final gameState = room.gameState;
         final rawStatus = gameState.status;
-        final members = room.members;
-
         final currentUid = ref.read(authProvider).currentUser?.uid;
-
 
         final closedMembers = gameState.closedMembers;
         final hasClosedResult = closedMembers.contains(currentUid);
@@ -115,7 +115,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       const Icon(Icons.circle, size: 7, color: Color(0xFF4CAF50)),
                       const SizedBox(width: 4),
                       Text(
-                        '${gameState.activeMembers.length}人 オンライン',
+                        '${activeMembers.length}人 オンライン',
                         style: const TextStyle(
                           fontSize: 11,
                           color: Color(0xFFB0B0C0),
@@ -132,7 +132,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     icon: const Icon(Icons.sports_esports),
                     tooltip: 'ゲーム開始',
                     onPressed: () {
-                      if (gameState.activeMembers.length < 2) {
+                      if (activeMembers.length < 2) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('ゲームは2人以上で開始できます'),
@@ -286,101 +286,114 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: const BoxDecoration(
-                      color: Color(0xFF1E1800),
+                      color: Color(0xFF1A0D2A),
                       border: Border(
-                        bottom: BorderSide(color: Color(0xFFFFA502), width: 2),
+                        bottom: BorderSide(color: Color(0xFF9C27B0), width: 2),
                       ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // 進捗表示
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '${gameState.currentQuestion + 1} / ${gameState.totalQuestions}問',
-                              style: const TextStyle(
-                                color: Color(0xFFFFA502),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            // 自分が回答済みか表示
-                            if (gameState.answers.containsKey(currentUid))
-                              const Text(
-                                '✅ 回答済み',
-                                style: TextStyle(color: Color(0xFF4CAF50), fontSize: 12),
-                              )
-                            else
-                              const Text(
-                                '回答してください',
-                                style: TextStyle(color: Color(0xFFB0B0C0), fontSize: 12),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
+                    // Builder でインデックス計算を行い、正しい問題データを取得する
+                    child: Builder(builder: (context) {
+                      // questionIndices = startGame時にランダム選択した問題番号の配列
+                      // currentQuestion = 今何問目か（0〜4）
+                      // actualIndex = kQuestionsの実際のインデックス
+                      final indices     = gameState.questionIndices;
+                      final q           = gameState.currentQuestion;
+                      final actualIndex = indices.isNotEmpty && q < indices.length
+                          ? indices[q]
+                          : q % kQuestions.length;
+                      final questionData = kQuestions[actualIndex];
 
-                        // お題
-                        Text(
-                          kQuestions[gameState.currentQuestion]['question'] as String,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: Colors.white,
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // 進捗表示
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${q + 1} / ${gameState.totalQuestions}問',
+                                style: const TextStyle(
+                                  color: Color(0xFF9C27B0),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              // 自分が回答済みか表示
+                              if (gameState.answers.containsKey(currentUid))
+                                const Text(
+                                  '✅ 回答済み',
+                                  style: TextStyle(color: Color(0xFF4CAF50), fontSize: 12),
+                                )
+                              else
+                                const Text(
+                                  '回答してください',
+                                  style: TextStyle(color: Color(0xFFB0B0C0), fontSize: 12),
+                                ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 16),
+                          const SizedBox(height: 12),
 
-                        // 4択ボタン
-                        ...(kQuestions[gameState.currentQuestion]['choices'] as List)
-                            .asMap()
-                            .entries
-                            .map((entry) {
-                          final index = entry.key;
-                          final choice = entry.value as String;
-                          final hasAnswered = gameState.answers.containsKey(currentUid);
-                          final myAnswer = gameState.answers[currentUid];
-                          final isSelected = myAnswer == index;
-
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: ElevatedButton(
-                              onPressed: hasAnswered
-                                  ? null  // 回答済みなら押せない
-                                  : () async {
-                                      if (currentUid == null) return;
-                                      await ref.read(gameNotifierProvider.notifier)
-                                          .submitAnswer(
-                                            widget.roomId,
-                                            currentUid,
-                                            index,
-                                            gameState.activeMembers,
-                                          );
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: isSelected
-                                    ? const Color(0xFFFFA502)
-                                    : const Color(0xFF252540),
-                                foregroundColor: Colors.white,
-                              ),
-                              child: Text(choice),
+                          // お題テキスト
+                          Text(
+                            questionData['question'] as String,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              color: Colors.white,
                             ),
-                          );
-                        }),
-
-                        const SizedBox(height: 8),
-
-                        // 何人が回答済みか表示
-                        Text(
-                          '${gameState.answers.length} / ${gameState.activeMembers.length}人が回答済み',
-                          style: const TextStyle(
-                            color: Color(0xFFB0B0C0),
-                            fontSize: 12,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
+                          const SizedBox(height: 16),
+
+                          // 4択ボタン
+                          ...(questionData['choices'] as List)
+                              .asMap()
+                              .entries
+                              .map((entry) {
+                            final index      = entry.key;
+                            final choice     = entry.value as String;
+                            final hasAnswered = gameState.answers.containsKey(currentUid);
+                            final myAnswer   = gameState.answers[currentUid];
+                            final isSelected = myAnswer == index;
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: ElevatedButton(
+                                onPressed: hasAnswered
+                                    ? null // 回答済みなら押せない
+                                    : () async {
+                                        if (currentUid == null) return;
+                                        await ref.read(gameNotifierProvider.notifier)
+                                            .submitAnswer(
+                                              widget.roomId,
+                                              currentUid,
+                                              index,
+                                              activeMembers,
+                                            );
+                                      },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isSelected
+                                      ? const Color(0xFF9C27B0)
+                                      : const Color(0xFF251840),
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: Text(choice),
+                              ),
+                            );
+                          }),
+
+                          const SizedBox(height: 8),
+
+                          // 何人が回答済みか表示
+                          Text(
+                            '${gameState.answers.length} / ${gameState.activeMembers.length}人が回答済み',
+                            style: const TextStyle(
+                              color: Color(0xFFB0B0C0),
+                              fontSize: 12,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      );
+                    }),
                   ),
 
                 // ─── チャット一覧 ───
@@ -409,9 +422,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D1526),
+        color: const Color(0xFF1A0D2A),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF4488CC), width: 1.5),
+        border: Border.all(color: const Color(0xFF8E24AA), width: 1.5),
       ),
       child: InkWell(
         onTap: () {
@@ -438,7 +451,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     'ゲーム結果（${rounds.length}問）',
                     style: const TextStyle(
                       fontSize: 13,
-                      color: Color(0xFF4488CC),
+                      color: Color(0xFF8E24AA),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -448,7 +461,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     duration: const Duration(milliseconds: 200),
                     child: const Icon(
                       Icons.keyboard_arrow_down,
-                      color: Color(0xFF4488CC),
+                      color: Color(0xFF8E24AA),
                       size: 18,
                     ),
                   ),
@@ -462,7 +475,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               child: isExpanded
                   ? Column(
                       children: [
-                        const Divider(color: Color(0xFF1A2A3A), height: 1),
+                        const Divider(color: Color(0xFF2A1A3A), height: 1),
                         // マッチング結果
                         Padding(
                           padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
@@ -472,7 +485,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                               const Text(
                                 'マッチング結果',
                                 style: TextStyle(
-                                  color: Color(0xFF4488CC),
+                                  color: Color(0xFF8E24AA),
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
                                 ),
@@ -519,7 +532,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             ],
                           ),
                         ),
-                        const Divider(color: Color(0xFF1A2A3A), height: 1),
+                        const Divider(color: Color(0xFF2A1A3A), height: 1),
                         // 各問の回答
                         ...rounds.asMap().entries.map((entry) {
                           final i       = entry.key;
@@ -540,7 +553,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                     Text(
                                       question,
                                       style: const TextStyle(
-                                        color: Color(0xFFFFA502),
+                                        color: Color(0xFF9C27B0),
                                         fontWeight: FontWeight.bold,
                                         fontSize: 13,
                                       ),
@@ -585,7 +598,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                               ),
                               if (!isLast)
                                 const Divider(
-                                  color: Color(0xFF1A2A3A),
+                                  color: Color(0xFF2A1A3A),
                                   height: 1,
                                   indent: 14,
                                   endIndent: 14,
@@ -613,7 +626,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                   if(!isMe)...[
                                     CircleAvatar(
                                       radius: 16,
-                                      backgroundColor: const Color(0xFF1A1A2E),
+                                      backgroundColor: const Color(0xFF1A1030),
                                       backgroundImage: avatarUrl.isNotEmpty
                                           ? NetworkImage(avatarUrl)
                                           : null,
@@ -649,8 +662,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                       ),
                                       decoration: BoxDecoration(
                                         color: isMe
-                                            ? const Color(0xFFE53935)
-                                            : const Color(0xFF252540),
+                                            ? const Color(0xFF6A1B9A)
+                                            : const Color(0xFF251840),
                                         borderRadius: BorderRadius.only(
                                           topLeft: const Radius.circular(20),
                                           topRight: const Radius.circular(20),
@@ -672,7 +685,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         );
                       },
                       loading: () => const Center(
-                        child: CircularProgressIndicator(color: Color(0xFFE53935)),
+                        child: CircularProgressIndicator(color: Color(0xFF6A1B9A)),
                       ),
                       error: (error, stack) => Center(
                         child: Text('メッセージ取得エラー: $error'),
@@ -684,9 +697,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: const BoxDecoration(
-                      color: Color(0xFF0D1526),
+                      color: Color(0xFF1A0D2A),
                       border: Border(
-                        bottom: BorderSide(color: Color(0xFF4488CC), width: 2),
+                        bottom: BorderSide(color: Color(0xFF8E24AA), width: 2),
                       ),
                     ),
                     child: Column(
@@ -749,11 +762,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                 // プログレスバー
                                 LinearProgressIndicator(
                                   value: percent / 100,
-                                  backgroundColor: const Color(0xFF252540),
+                                  backgroundColor: const Color(0xFF251840),
                                   valueColor: AlwaysStoppedAnimation<Color>(
                                     percent >= 60
                                         ? const Color(0xFF4CAF50)
-                                        : const Color(0xFF4488CC),
+                                        : const Color(0xFF8E24AA),
                                   ),
                                 ),
                               ],
@@ -779,9 +792,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: const BoxDecoration(
-                      color: Color(0xFF1A1A2E),
+                      color: Color(0xFF1A1030),
                       border: Border(
-                        top: BorderSide(color: Color(0xFF3D3D5C)),
+                        top: BorderSide(color: Color(0xFF3D2855)),
                       ),
                     ),
                     child: Row(
@@ -808,7 +821,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                 borderSide: BorderSide.none,
                               ),
                               filled: true,
-                              fillColor: const Color(0xFF252540),
+                              fillColor: const Color(0xFF251840),
                             ),
                             maxLines: null,
                             textInputAction: TextInputAction.send,
@@ -818,7 +831,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         const SizedBox(width: 8),
                         Container(
                           decoration: const BoxDecoration(
-                            color: Color(0xFFE53935),
+                            color: Color(0xFF6A1B9A),
                             shape: BoxShape.circle,
                           ),
                           child: IconButton(
@@ -835,7 +848,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
       },
       loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Color(0xFFE53935))),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFF6A1B9A))),
       ),
       error: (error, stack) => Scaffold(
         body: Center(child: Text('ルームデータの読み込みエラー: $error')),

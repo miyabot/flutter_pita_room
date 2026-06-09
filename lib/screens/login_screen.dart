@@ -1,6 +1,5 @@
 import 'package:bomb_chat/utils/auth_error_message.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -79,7 +78,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                 padding: const EdgeInsets.symmetric(vertical: 56),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+                    colors: [Color(0xFF1A1030), Color(0xFF1A1030)],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                   ),
@@ -88,21 +87,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                   children: [
                     ScaleTransition(
                       scale: _animation,
-                      child: const Text('💣', style: TextStyle(fontSize: 80)),
+                      child: const Text('🔮', style: TextStyle(fontSize: 80)),
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'BOMB CHAT',
+                      'AISON',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFFE53935),
+                        color: Color(0xFF6A1B9A),
                         letterSpacing: 4,
                       ),
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      '爆発を回避せよ',
+                      '趣味・好みで相性を知ろう',
                       style: TextStyle(fontSize: 13, color: Color(0xFFB0B0C0)),
                     ),
                   ],
@@ -136,7 +135,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                     const SizedBox(height: 32),
                     if (_isLoading)
                       const Center(
-                        child: CircularProgressIndicator(color: Color(0xFFE53935)),
+                        child: CircularProgressIndicator(color: Color(0xFF6A1B9A)),
                       )
                     else ...[
                       SizedBox(

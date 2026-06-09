@@ -79,7 +79,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               const SizedBox(height: 24),
               if (_isLoading)
                 const Center(
-                  child: CircularProgressIndicator(color: Color(0xFFE53935)),
+                  child: CircularProgressIndicator(color: Color(0xFF6A1B9A)),
                 )
               else
                 ElevatedButton(
