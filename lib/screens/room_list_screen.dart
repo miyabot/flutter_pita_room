@@ -22,13 +22,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
       data: (rooms) {
         return Scaffold(
           appBar: AppBar(
-            title: const Row(
-              children: [
-                Text('🔮', style: TextStyle(fontSize: 20)),
-                SizedBox(width: 8),
-                Text('ルーム一覧'),
-              ],
-            ),
+            title: const Text('ルーム一覧'),
             actions: [
               IconButton(
                 onPressed: () {
@@ -54,16 +48,16 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('🔮', style: TextStyle(fontSize: 64)),
+                      const Text('💬', style: TextStyle(fontSize: 64)),
                       const SizedBox(height: 16),
                       const Text(
                         '参加している部屋がありません',
-                        style: TextStyle(fontSize: 16, color: Color(0xFFB0B0C0)),
+                        style: TextStyle(fontSize: 16, color: Color(0xFF9E7B8A)),
                       ),
                       const SizedBox(height: 8),
                       const Text(
                         '右下のボタンから部屋を作成しましょう',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF6060A0)),
+                        style: TextStyle(fontSize: 12, color: Color(0xFFAD5D7A)),
                       ),
                     ],
                   ),
@@ -84,7 +78,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                             ),
                           );
                         },
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(4),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Row(
@@ -93,12 +87,13 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                                 width: 48,
                                 height: 48,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF251840),
-                                  borderRadius: BorderRadius.circular(12),
+                                  color: const Color(0xFFFCE4EC),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: const Color(0xFFFFCDD2), width: 1.5),
                                 ),
                                 child: const Icon(
                                   Icons.meeting_room_rounded,
-                                  color: Color(0xFF6A1B9A),
+                                  color: Color(0xFFE91E8C),
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -108,13 +103,13 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
-                                    color: Colors.white,
+                                    color: Color(0xFF2D1B33),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const Icon(Icons.chevron_right, color: Color(0xFFB0B0C0)),
+                              const Icon(Icons.chevron_right, color: Color(0xFF9E7B8A)),
                             ],
                           ),
                         ),
@@ -135,7 +130,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
         );
       },
       loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Color(0xFF6A1B9A))),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFFE91E8C))),
       ),
       error: (error, stack) {
         debugPrint('部屋一覧取得エラー: $error');

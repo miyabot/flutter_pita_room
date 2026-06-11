@@ -118,7 +118,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         '${activeMembers.length}人 オンライン',
                         style: const TextStyle(
                           fontSize: 11,
-                          color: Color(0xFFB0B0C0),
+                          color: Color(0xFF9E7B8A),
                           fontWeight: FontWeight.normal,
                         ),
                       ),
@@ -143,6 +143,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       }
                       ref.read(gameNotifierProvider.notifier).startGame(
                         widget.roomId,
+                        activeMembers,
                       );
                     },
                   )
@@ -286,9 +287,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: const BoxDecoration(
-                      color: Color(0xFF1A0D2A),
+                      color: Color(0xFFFCE4EC),
                       border: Border(
-                        bottom: BorderSide(color: Color(0xFF9C27B0), width: 2),
+                        bottom: BorderSide(color: Color(0xFFE91E8C), width: 2),
                       ),
                     ),
                     // Builder でインデックス計算を行い、正しい問題データを取得する
@@ -313,7 +314,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                               Text(
                                 '${q + 1} / ${gameState.totalQuestions}問',
                                 style: const TextStyle(
-                                  color: Color(0xFF9C27B0),
+                                  color: Color(0xFFE91E8C),
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -326,7 +327,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                               else
                                 const Text(
                                   '回答してください',
-                                  style: TextStyle(color: Color(0xFFB0B0C0), fontSize: 12),
+                                  style: TextStyle(color: Color(0xFF9E7B8A), fontSize: 12),
                                 ),
                             ],
                           ),
@@ -338,7 +339,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
-                              color: Colors.white,
+                              color: Color(0xFF2D1B33),
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -371,9 +372,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                       },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: isSelected
-                                      ? const Color(0xFF9C27B0)
-                                      : const Color(0xFF251840),
-                                  foregroundColor: Colors.white,
+                                      ? const Color(0xFFE91E8C)
+                                      : const Color(0xFFF8BBD0),
+                                  foregroundColor: isSelected ? Colors.white : const Color(0xFF2D1B33),
+                                  side: BorderSide(
+                                    color: isSelected
+                                        ? const Color(0xFFAD1461)
+                                        : const Color(0xFFFFCDD2),
+                                    width: 1.5,
+                                  ),
                                 ),
                                 child: Text(choice),
                               ),
@@ -386,7 +393,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           Text(
                             '${gameState.answers.length} / ${gameState.activeMembers.length}人が回答済み',
                             style: const TextStyle(
-                              color: Color(0xFFB0B0C0),
+                              color: Color(0xFF9E7B8A),
                               fontSize: 12,
                             ),
                             textAlign: TextAlign.center,
@@ -397,7 +404,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
 
                 // ─── チャット一覧 ───
-                if (status == 'waiting' || status == 'playing')
+                if (status == 'waiting')
                   Expanded(
                     child: messageState.when(
                       data: (messages) {
@@ -422,9 +429,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A0D2A),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF8E24AA), width: 1.5),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: const Color(0xFFE91E8C), width: 1.5),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33E91E8C),
+            offset: Offset(3, 3),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: InkWell(
         onTap: () {
@@ -451,7 +465,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     'ゲーム結果（${rounds.length}問）',
                     style: const TextStyle(
                       fontSize: 13,
-                      color: Color(0xFF8E24AA),
+                      color: Color(0xFFE91E8C),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -461,7 +475,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     duration: const Duration(milliseconds: 200),
                     child: const Icon(
                       Icons.keyboard_arrow_down,
-                      color: Color(0xFF8E24AA),
+                      color: Color(0xFFE91E8C),
                       size: 18,
                     ),
                   ),
@@ -475,7 +489,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               child: isExpanded
                   ? Column(
                       children: [
-                        const Divider(color: Color(0xFF2A1A3A), height: 1),
+                        const Divider(color: Color(0xFFFFCDD2), height: 1),
                         // マッチング結果
                         Padding(
                           padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
@@ -485,7 +499,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                               const Text(
                                 'マッチング結果',
                                 style: TextStyle(
-                                  color: Color(0xFF8E24AA),
+                                  color: Color(0xFFE91E8C),
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
                                 ),
@@ -510,7 +524,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                       Text(
                                         '$name1 × $name2',
                                         style: const TextStyle(
-                                          color: Colors.white,
+                                          color: Color(0xFF2D1B33),
                                           fontSize: 12,
                                         ),
                                       ),
@@ -520,7 +534,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                         style: TextStyle(
                                           color: percent >= 60
                                               ? const Color(0xFF4CAF50)
-                                              : const Color(0xFFB0B0C0),
+                                              : const Color(0xFF9E7B8A),
                                           fontWeight: FontWeight.bold,
                                           fontSize: 12,
                                         ),
@@ -532,7 +546,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             ],
                           ),
                         ),
-                        const Divider(color: Color(0xFF2A1A3A), height: 1),
+                        const Divider(color: Color(0xFFFFCDD2), height: 1),
                         // 各問の回答
                         ...rounds.asMap().entries.map((entry) {
                           final i       = entry.key;
@@ -553,7 +567,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                     Text(
                                       question,
                                       style: const TextStyle(
-                                        color: Color(0xFF9C27B0),
+                                        color: Color(0xFFE91E8C),
                                         fontWeight: FontWeight.bold,
                                         fontSize: 13,
                                       ),
@@ -574,18 +588,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                             Text(
                                               userName,
                                               style: const TextStyle(
-                                                color: Colors.white,
+                                                color: Color(0xFF2D1B33),
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 12,
                                               ),
                                             ),
                                             const Text('：',
-                                              style: TextStyle(color: Color(0xFFB0B0C0)),
+                                              style: TextStyle(color: Color(0xFF9E7B8A)),
                                             ),
                                             Text(
                                               choiceText,
                                               style: const TextStyle(
-                                                color: Colors.white,
+                                                color: Color(0xFF2D1B33),
                                                 fontSize: 12,
                                               ),
                                             ),
@@ -598,7 +612,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                               ),
                               if (!isLast)
                                 const Divider(
-                                  color: Color(0xFF2A1A3A),
+                                  color: Color(0xFFFFCDD2),
                                   height: 1,
                                   indent: 14,
                                   endIndent: 14,
@@ -626,13 +640,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                   if(!isMe)...[
                                     CircleAvatar(
                                       radius: 16,
-                                      backgroundColor: const Color(0xFF1A1030),
+                                      backgroundColor: const Color(0xFFFCE4EC),
                                       backgroundImage: avatarUrl.isNotEmpty
                                           ? NetworkImage(avatarUrl)
                                           : null,
                                       child: avatarUrl.isEmpty
-                                          ? const Icon(Icons.person, size: 16, color: Color(0xFFB0B0C0))
-                                          : null, 
+                                          ? const Icon(Icons.person, size: 16, color: Color(0xFF9E7B8A))
+                                          : null,
                                     ),
                                     const SizedBox(width: 8),
                                   ],
@@ -648,7 +662,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                           name,
                                           style: const TextStyle(
                                             fontSize: 11,
-                                            color: Color(0xFFB0B0C0),
+                                            color: Color(0xFF9E7B8A),
                                           ),
                                         ),
                                       ),
@@ -662,18 +676,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                       ),
                                       decoration: BoxDecoration(
                                         color: isMe
-                                            ? const Color(0xFF6A1B9A)
-                                            : const Color(0xFF251840),
+                                            ? const Color(0xFFE91E8C)
+                                            : const Color(0xFFF8BBD0),
                                         borderRadius: BorderRadius.only(
-                                          topLeft: const Radius.circular(20),
-                                          topRight: const Radius.circular(20),
-                                          bottomLeft: Radius.circular(isMe ? 20 : 4),
-                                          bottomRight: Radius.circular(isMe ? 4 : 20),
+                                          topLeft: const Radius.circular(4),
+                                          topRight: const Radius.circular(4),
+                                          bottomLeft: Radius.circular(isMe ? 4 : 0),
+                                          bottomRight: Radius.circular(isMe ? 0 : 4),
+                                        ),
+                                        border: Border.all(
+                                          color: isMe
+                                              ? const Color(0xFFAD1461)
+                                              : const Color(0xFFFFCDD2),
+                                          width: 1.5,
                                         ),
                                       ),
                                       child: Text(
                                         message.text,
-                                        style: const TextStyle(color: Colors.white, fontSize: 15),
+                                        style: TextStyle(
+                                          color: isMe ? Colors.white : const Color(0xFF2D1B33),
+                                          fontSize: 15,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -685,7 +708,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         );
                       },
                       loading: () => const Center(
-                        child: CircularProgressIndicator(color: Color(0xFF6A1B9A)),
+                        child: CircularProgressIndicator(color: Color(0xFFE91E8C)),
                       ),
                       error: (error, stack) => Center(
                         child: Text('メッセージ取得エラー: $error'),
@@ -697,9 +720,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: const BoxDecoration(
-                      color: Color(0xFF1A0D2A),
+                      color: Color(0xFFFCE4EC),
                       border: Border(
-                        bottom: BorderSide(color: Color(0xFF8E24AA), width: 2),
+                        bottom: BorderSide(color: Color(0xFFE91E8C), width: 2),
                       ),
                     ),
                     child: Column(
@@ -710,7 +733,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: Color(0xFF2D1B33),
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -743,7 +766,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                     Text(
                                       name,
                                       style: const TextStyle(
-                                        color: Colors.white,
+                                        color: Color(0xFF2D1B33),
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -752,7 +775,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                       style: TextStyle(
                                         color: percent >= 60
                                             ? const Color(0xFF4CAF50)
-                                            : const Color(0xFFB0B0C0),
+                                            : const Color(0xFF9E7B8A),
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -762,11 +785,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                 // プログレスバー
                                 LinearProgressIndicator(
                                   value: percent / 100,
-                                  backgroundColor: const Color(0xFF251840),
+                                  backgroundColor: const Color(0xFFF8BBD0),
                                   valueColor: AlwaysStoppedAnimation<Color>(
                                     percent >= 60
                                         ? const Color(0xFF4CAF50)
-                                        : const Color(0xFF8E24AA),
+                                        : const Color(0xFFE91E8C),
                                   ),
                                 ),
                               ],
@@ -792,9 +815,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: const BoxDecoration(
-                      color: Color(0xFF1A1030),
+                      color: Colors.white,
                       border: Border(
-                        top: BorderSide(color: Color(0xFF3D2855)),
+                        top: BorderSide(color: Color(0xFFFFCDD2)),
                       ),
                     ),
                     child: Row(
@@ -809,19 +832,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                 vertical: 10,
                               ),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
-                                borderSide: BorderSide.none,
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: const BorderSide(color: Color(0xFFFFCDD2), width: 1.5),
                               ),
                               enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
-                                borderSide: BorderSide.none,
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: const BorderSide(color: Color(0xFFFFCDD2), width: 1.5),
                               ),
                               focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
-                                borderSide: BorderSide.none,
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: const BorderSide(color: Color(0xFFE91E8C), width: 2),
                               ),
                               filled: true,
-                              fillColor: const Color(0xFF251840),
+                              fillColor: const Color(0xFFF8BBD0),
                             ),
                             maxLines: null,
                             textInputAction: TextInputAction.send,
@@ -830,9 +853,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF6A1B9A),
-                            shape: BoxShape.circle,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE91E8C),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: const Color(0xFFAD1461), width: 1.5),
                           ),
                           child: IconButton(
                             icon: const Icon(Icons.send_rounded, color: Colors.white),
@@ -848,7 +872,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
       },
       loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Color(0xFF6A1B9A))),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFFE91E8C))),
       ),
       error: (error, stack) => Scaffold(
         body: Center(child: Text('ルームデータの読み込みエラー: $error')),

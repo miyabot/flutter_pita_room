@@ -71,18 +71,18 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
               const SizedBox(height: 24),
               const Text(
                 'メールを確認してください',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D1B33)),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               Text(
                 '$email\nに確認メールを送信しました。\nメール内のリンクをタップしてから\n下のボタンを押してください。',
-                style: const TextStyle(fontSize: 14, color: Color(0xFFB0B0C0), height: 1.7),
+                style: const TextStyle(fontSize: 14, color: Color(0xFF9E7B8A), height: 1.7),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 40),
               if (_isChecking)
-                const Center(child: CircularProgressIndicator(color: Color(0xFF6A1B9A)))
+                const Center(child: CircularProgressIndicator(color: Color(0xFFE91E8C)))
               else
                 ElevatedButton(
                   onPressed: _checkVerified,
@@ -90,7 +90,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                 ),
               const SizedBox(height: 12),
               if (_isResending)
-                const Center(child: CircularProgressIndicator(color: Color(0xFF6A1B9A)))
+                const Center(child: CircularProgressIndicator(color: Color(0xFFE91E8C)))
               else
                 OutlinedButton(
                   onPressed: _resendEmail,

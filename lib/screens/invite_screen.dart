@@ -69,7 +69,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
             const SizedBox(height: 16),
             const Text(
               '招待IDを入力してユーザーをルームに追加できます',
-              style: TextStyle(fontSize: 14, color: Color(0xFFB0B0C0)),
+              style: TextStyle(fontSize: 14, color: Color(0xFF9E7B8A)),
             ),
             const SizedBox(height: 28),
             TextField(

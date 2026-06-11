@@ -1,7 +1,9 @@
+import 'package:bomb_chat/utils/app_links.dart';
 import 'package:bomb_chat/utils/auth_error_message.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../providers.dart';
 import 'register_screen.dart';
@@ -13,34 +15,65 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProviderStateMixin{
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
-  late final AnimationController _controller;
-  late final Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration:const Duration(milliseconds: 800)
-    )..repeat(reverse: true);
-
-    _animation = Tween<double>(
-      begin: 0.9,
-      end:1.1
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-
   @override
   void dispose() {
-    _controller.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _resetPassword() async {
+    // メール欄に入力済みの値をダイアログに初期表示する
+    final emailController = TextEditingController(text: _emailController.text.trim());
+
+    final email = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('パスワードをリセット'),
+        content: TextField(
+          controller: emailController,
+          keyboardType: TextInputType.emailAddress,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'メールアドレス',
+            prefixIcon: Icon(Icons.email_outlined),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, emailController.text.trim()),
+            child: const Text('送信'),
+          ),
+        ],
+      ),
+    );
+    emailController.dispose();
+
+    if (email == null || email.isEmpty) return;
+
+    try {
+      await ref.read(authProvider).sendPasswordResetEmail(email: email);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('パスワードリセットメールを送信しました')),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(authErrorMessage(e.code))),
+        );
+      }
+    }
   }
 
   Future<void> _login() async {
@@ -77,32 +110,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 56),
                 decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF1A1030), Color(0xFF1A1030)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+                  color: Color(0xFFFCE4EC),
+                  border: Border(
+                    bottom: BorderSide(color: Color(0xFFE91E8C), width: 2),
                   ),
                 ),
                 child: Column(
                   children: [
-                    ScaleTransition(
-                      scale: _animation,
-                      child: const Text('🔮', style: TextStyle(fontSize: 80)),
+                    Image.asset(
+                      'assets/images/fairy.png',
+                      height: 120,
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'AISON',
+                      'ぴたルム',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF6A1B9A),
+                        color: Color(0xFFE91E8C),
                         letterSpacing: 4,
                       ),
                     ),
                     const SizedBox(height: 6),
                     const Text(
                       '趣味・好みで相性を知ろう',
-                      style: TextStyle(fontSize: 13, color: Color(0xFFB0B0C0)),
+                      style: TextStyle(fontSize: 13, color: Color(0xFF9E7B8A)),
                     ),
                   ],
                 ),
@@ -132,10 +164,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                       ),
                       obscureText: true,
                     ),
-                    const SizedBox(height: 32),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _resetPassword,
+                        child: const Text('パスワードをお忘れの方'),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     if (_isLoading)
                       const Center(
-                        child: CircularProgressIndicator(color: Color(0xFF6A1B9A)),
+                        child: CircularProgressIndicator(color: Color(0xFFE91E8C)),
                       )
                     else ...[
                       SizedBox(
@@ -154,6 +193,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                           );
                         },
                         child: const Text('アカウントをお持ちでない方はこちら'),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          TextButton(
+                            onPressed: () => launchUrl(Uri.parse(kPrivacyPolicyUrl)),
+                            child: const Text(
+                              'プライバシーポリシー',
+                              style: TextStyle(fontSize: 12, color: Color(0xFFAD5D7A)),
+                            ),
+                          ),
+                          const Text('・', style: TextStyle(color: Color(0xFFAD5D7A))),
+                          TextButton(
+                            onPressed: () => launchUrl(Uri.parse(kTermsOfServiceUrl)),
+                            child: const Text(
+                              '利用規約',
+                              style: TextStyle(fontSize: 12, color: Color(0xFFAD5D7A)),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ],

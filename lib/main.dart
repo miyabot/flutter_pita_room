@@ -1,6 +1,7 @@
 import 'package:bomb_chat/screens/profile_setup_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,10 +18,7 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   runApp(
-    DevicePreview(
-      enabled: !kReleaseMode,
-      builder: (context)=>const ProviderScope(child: MyApp())
-    )
+    const ProviderScope(child: MyApp())
   );
 }
 
@@ -34,102 +32,113 @@ class MyApp extends ConsumerWidget {
     final authState = ref.watch(authStateProvider);
 
     return MaterialApp(
-      locale: DevicePreview.locale(context),
-      builder: DevicePreview.appBuilder,
+      //locale: DevicePreview.locale(context),
+      //builder: DevicePreview.appBuilder,
       debugShowCheckedModeBanner: false,
-      title: 'Bomb Chat',
+      title: 'ぴたルム',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6A1B9A),
-          brightness: Brightness.dark,
+          seedColor: const Color(0xFFE91E8C),
+          brightness: Brightness.light,
         ),
-        scaffoldBackgroundColor: const Color(0xFF0D0A1A),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF1A1030),
-          foregroundColor: Colors.white,
+        textTheme: GoogleFonts.dotGothic16TextTheme(),
+        scaffoldBackgroundColor: const Color(0xFFFFF5F8),
+        appBarTheme: AppBarTheme(
+          backgroundColor: const Color(0xFFFFF5F8),
+          foregroundColor: const Color(0xFF2D1B33),
           elevation: 0,
-          titleTextStyle: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
+          titleTextStyle: GoogleFonts.dotGothic16(
+            color: const Color(0xFF2D1B33),
+            fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
         cardTheme: CardThemeData(
-          color: const Color(0xFF1A1030),
-          elevation: 4,
-          shadowColor: Colors.black54,
+          color: Colors.white,
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(4),
+            side: const BorderSide(color: Color(0xFFFFCDD2), width: 1.5),
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF6A1B9A),
+            backgroundColor: const Color(0xFFE91E8C),
             foregroundColor: Colors.white,
             elevation: 0,
             minimumSize: const Size(0, 52),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(4),
             ),
-            textStyle: const TextStyle(
-              fontSize: 16,
+            textStyle: GoogleFonts.dotGothic16(
+              fontSize: 15,
               fontWeight: FontWeight.bold,
             ),
           ),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Color(0xFF6A1B9A)),
-            foregroundColor: const Color(0xFF6A1B9A),
+            side: const BorderSide(color: Color(0xFFE91E8C), width: 1.5),
+            foregroundColor: const Color(0xFFE91E8C),
             minimumSize: const Size(0, 52),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(4),
             ),
-            textStyle: const TextStyle(
-              fontSize: 16,
+            textStyle: GoogleFonts.dotGothic16(
+              fontSize: 15,
               fontWeight: FontWeight.bold,
             ),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: const Color(0xFF251840),
+          fillColor: const Color(0xFFFFF0F5),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF3D2855)),
+            borderRadius: BorderRadius.circular(4),
+            borderSide: const BorderSide(color: Color(0xFFFFCDD2), width: 1.5),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF3D2855)),
+            borderRadius: BorderRadius.circular(4),
+            borderSide: const BorderSide(color: Color(0xFFFFCDD2), width: 1.5),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF6A1B9A), width: 2),
+            borderRadius: BorderRadius.circular(4),
+            borderSide: const BorderSide(color: Color(0xFFE91E8C), width: 2),
           ),
-          labelStyle: const TextStyle(color: Color(0xFFB0B0C0)),
-          hintStyle: const TextStyle(color: Color(0xFF6060A0)),
-          prefixIconColor: const Color(0xFFB0B0C0),
+          labelStyle: const TextStyle(color: Color(0xFF9E7B8A)),
+          hintStyle: const TextStyle(color: Color(0xFFAD5D7A)),
+          prefixIconColor: const Color(0xFF9E7B8A),
         ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFF9C27B0),
+            foregroundColor: const Color(0xFFE91E8C),
           ),
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Color(0xFF6A1B9A),
+          backgroundColor: Color(0xFFE91E8C),
           foregroundColor: Colors.white,
-          elevation: 4,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(4)),
+            side: BorderSide(color: Color(0xFFAD1461), width: 1.5),
+          ),
         ),
         snackBarTheme: SnackBarThemeData(
-          backgroundColor: const Color(0xFF251840),
+          backgroundColor: const Color(0xFF2D1B33),
           contentTextStyle: const TextStyle(color: Colors.white),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(4),
           ),
         ),
-        iconTheme: const IconThemeData(color: Color(0xFFB0B0C0)),
+        iconTheme: const IconThemeData(color: Color(0xFF9E7B8A)),
+        dialogTheme: DialogThemeData(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(4),
+            side: const BorderSide(color: Color(0xFFFFCDD2), width: 1.5),
+          ),
+        ),
       ),
       home: authState.when(
         data: (user){

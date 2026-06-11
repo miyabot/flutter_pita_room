@@ -176,6 +176,58 @@ class AuthNotifier extends AsyncNotifier<void> {
     await ref.read(firestoreProvider).collection('users').doc(query.docs.first.id).update({'avatarUrl': url});
   }
 
+  /// アカウントを完全に削除する
+  /// Firebase は削除前に再認証が必要なため、パスワードを受け取る
+  Future<void> deleteAccount(String password) async {
+    final user = ref.read(authProvider).currentUser;
+    if (user == null) return;
+
+    final uid   = user.uid;
+    final email = user.email ?? '';
+
+    // ① 再認証（時間が経ったセッションでは削除がブロックされる）
+    //ログインから時間が経っている場合は再認証を要求
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: password,
+    );
+    await user.reauthenticateWithCredential(credential);
+
+    // ② Storage のアバター画像を削除
+    try {
+      await ref.read(storageProvider).ref('avatars/$uid.jpg').delete();
+    } catch (_) {
+      // アバター未設定のユーザーはスキップ
+    }
+
+    // ③ 参加中の全ルームから退会（最後の1人なら部屋ごと削除）
+    final roomQuery = await ref.read(firestoreProvider)
+        .collection('rooms')
+        .where('members', arrayContains: uid)
+        .get();
+
+    for (final doc in roomQuery.docs) {
+      await doc.reference.update({
+        'members': FieldValue.arrayRemove([uid]),
+      });
+      final updated  = await doc.reference.get();
+      final members  = List<String>.from(updated.data()?['members'] ?? []);
+      if (members.isEmpty) await doc.reference.delete();
+    }
+
+    // ④ Firestore のユーザードキュメントを削除
+    final userQuery = await ref.read(firestoreProvider)
+        .collection('users')
+        .where('uid', isEqualTo: uid)
+        .get();
+    for (final doc in userQuery.docs) {
+      await doc.reference.delete();
+    }
+
+    // ⑤ Firebase Auth のアカウントを削除（最後に行う）
+    await user.delete();
+  }
+
   @override
   Future<void> build() async {}
 }
@@ -438,7 +490,7 @@ class GameNotifier extends Notifier<void> {
     await presenceRef.remove();
   }
 
-  Future<void> startGame(String roomId) async {
+  Future<void> startGame(String roomId, List<String> activeMembers) async {
     // kQuestionsから5問をランダムに選んでインデックスを保存する
     // こうすることでゲームごとに毎回違う問題が出題される
     final allIndices = List.generate(kQuestions.length, (i) => i)..shuffle(Random());
@@ -452,7 +504,8 @@ class GameNotifier extends Notifier<void> {
       'gameState.scores':           {},
       'gameState.rounds':           [],
       'gameState.closedMembers':    [],
-      'gameState.questionIndices':  selectedIndices, // 今ゲームで使う5問のインデックス
+      'gameState.activeMembers':    activeMembers, // ゲーム開始時のメンバーを記録（結果表示・スコア計算に使用）
+      'gameState.questionIndices':  selectedIndices,
     });
   }
 

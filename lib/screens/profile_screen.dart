@@ -1,8 +1,12 @@
 import 'package:bomb_chat/providers.dart';
+import 'package:bomb_chat/utils/app_links.dart';
+import 'package:bomb_chat/utils/auth_error_message.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -12,9 +16,92 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  bool _isEditing = false;
-  bool _isUploading = false; // ← 追加
+  bool _isEditing   = false;
+  bool _isUploading = false;
+  bool _isDeleting  = false;
   final _nameController = TextEditingController();
+
+  /// アカウント削除：パスワード確認ダイアログ → 削除実行
+  Future<void> _showDeleteDialog() async {
+    final passwordController = TextEditingController();
+
+    // ① 確認ダイアログ
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('アカウントを削除'),
+        content: const Text(
+          'アカウントを削除すると、すべてのデータが失われます。\nこの操作は取り消せません。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('削除する'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (!mounted) return;
+
+    // ② パスワード確認ダイアログ（再認証に必要）
+    final password = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('パスワードを確認'),
+        content: TextField(
+          controller: passwordController,
+          obscureText: true,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'パスワード',
+            prefixIcon: Icon(Icons.lock_outline),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, passwordController.text),
+            child: const Text('確認'),
+          ),
+        ],
+      ),
+    );
+    passwordController.dispose();
+    if (password == null || password.isEmpty) return;
+    if (!mounted) return;
+
+    // ③ 削除実行
+    setState(() => _isDeleting = true);
+    try {
+      await ref.read(authNotifierProvider.notifier).deleteAccount(password);
+      // 削除完了後にルートへ戻す
+      // （currentUserProvider が先に null になって「データなし」が映るのを防ぐ）
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      // invalid-credential はログイン画面用のメッセージだが、
+      // ここではパスワードしか入力していないので専用メッセージに上書き
+      final message = (e.code == 'invalid-credential' || e.code == 'wrong-password')
+          ? 'パスワードが間違っています'
+          : authErrorMessage(e.code);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) setState(() => _isDeleting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +126,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           decoration: const BoxDecoration(
                             shape: BoxShape.circle,
                             gradient: LinearGradient(
-                              colors: [Color(0xFF6A1B9A), Color(0xFFFF7043)],
+                              colors: [Color(0xFFE91E8C), Color(0xFFFF80AB)],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
@@ -47,17 +134,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           padding: const EdgeInsets.all(3),
                           child: CircleAvatar(
                             radius: 48,
-                            backgroundColor: const Color(0xFF1A1030),
-                            backgroundImage: userModel.avatarUrl.isNotEmpty ? 
+                            backgroundColor: const Color(0xFFFCE4EC),
+                            backgroundImage: userModel.avatarUrl.isNotEmpty ?
                                               NetworkImage(userModel.avatarUrl) : null,
                             child: _isUploading
-                              // アップロード中はインジケーターを表示
                               ? const CircularProgressIndicator(
-                                  color: Colors.white,
+                                  color: Color(0xFFE91E8C),
                                   strokeWidth: 2,
                                 )
                               : userModel.avatarUrl.isEmpty
-                                  ? const Icon(Icons.person, size: 52, color: Color(0xFFB0B0C0))
+                                  ? const Icon(Icons.person, size: 52, color: Color(0xFF9E7B8A))
                                   : null,
                           ),
                         ),
@@ -81,8 +167,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             child: Container(
                               padding: EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: Color(0xFF6A1B9A),
-                                shape: BoxShape.circle,
+                                color: Color(0xFFE91E8C),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Color(0xFFAD1461), width: 1.5),
                               ),
                               child: Icon(Icons.camera_alt,size: 18,color: Colors.white)
                             )
@@ -115,7 +202,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 style: const TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                                  color: Color(0xFF2D1B33),
                                 ),
                               ),
                         IconButton(
@@ -132,7 +219,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           },
                           icon: Icon(
                             _isEditing ? Icons.check_circle : Icons.edit,
-                            color: const Color(0xFF6A1B9A),
+                            color: const Color(0xFFE91E8C),
                           ),
                         ),
                       ],
@@ -142,7 +229,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       userModel.email,
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Color(0xFFB0B0C0),
+                        color: Color(0xFF9E7B8A),
                       ),
                     ),
                     const SizedBox(height: 40),
@@ -151,9 +238,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1A1030),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFF3D2855)),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: const Color(0xFFFFCDD2), width: 1.5),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x33E91E8C),
+                            offset: Offset(3, 3),
+                            blurRadius: 0,
+                          ),
+                        ],
                       ),
                       child: Row(
                         children: [
@@ -164,7 +258,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 '招待ID',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Color(0xFFB0B0C0),
+                                  color: Color(0xFF9E7B8A),
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -174,7 +268,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 4,
-                                  color: Color(0xFF6A1B9A),
+                                  color: Color(0xFFE91E8C),
                                 ),
                               ),
                             ],
@@ -192,18 +286,63 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             },
                             icon: const Icon(
                               Icons.copy,
-                              color: Color(0xFFB0B0C0),
+                              color: Color(0xFF9E7B8A),
                             ),
                           ),
                         ],
                       ),
                     ),
+
+                    const SizedBox(height: 24),
+
+                    // プライバシーポリシー・利用規約
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TextButton(
+                          onPressed: () => launchUrl(Uri.parse(kPrivacyPolicyUrl)),
+                          child: const Text(
+                            'プライバシーポリシー',
+                            style: TextStyle(fontSize: 12, color: Color(0xFFAD5D7A)),
+                          ),
+                        ),
+                        const Text('・', style: TextStyle(color: Color(0xFFAD5D7A))),
+                        TextButton(
+                          onPressed: () => launchUrl(Uri.parse(kTermsOfServiceUrl)),
+                          child: const Text(
+                            '利用規約',
+                            style: TextStyle(fontSize: 12, color: Color(0xFFAD5D7A)),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // アカウント削除ボタン
+                    if (_isDeleting)
+                      const Center(
+                        child: CircularProgressIndicator(color: Colors.red),
+                      )
+                    else
+                      OutlinedButton.icon(
+                        onPressed: _showDeleteDialog,
+                        icon: const Icon(Icons.delete_forever, color: Colors.red),
+                        label: const Text(
+                          'アカウントを削除',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.red),
+                        ),
+                      ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               );
             },
             loading: () => const Center(
-              child: CircularProgressIndicator(color: Color(0xFF6A1B9A)),
+              child: CircularProgressIndicator(color: Color(0xFFE91E8C)),
             ),
             error: (error, stack) => Center(child: Text('エラーが発生しました: $error')),
           ),

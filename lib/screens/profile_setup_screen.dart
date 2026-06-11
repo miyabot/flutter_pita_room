@@ -49,21 +49,21 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('💣', style: TextStyle(fontSize: 72), textAlign: TextAlign.center),
+              Image.asset('assets/images/fairy.png', height: 100),
               const SizedBox(height: 20),
               const Text(
-                'Bomb Chatへようこそ！',
+                'ようこそ！',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Color(0xFF2D1B33),
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               const Text(
                 'まずは表示名を設定してください',
-                style: TextStyle(fontSize: 14, color: Color(0xFFB0B0C0)),
+                style: TextStyle(fontSize: 14, color: Color(0xFF9E7B8A)),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 48),
@@ -79,7 +79,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               const SizedBox(height: 24),
               if (_isLoading)
                 const Center(
-                  child: CircularProgressIndicator(color: Color(0xFF6A1B9A)),
+                  child: CircularProgressIndicator(color: Color(0xFFE91E8C)),
                 )
               else
                 ElevatedButton(

@@ -58,7 +58,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             const SizedBox(height: 16),
             const Text(
               'アカウントを作成してゲームを始めましょう',
-              style: TextStyle(fontSize: 14, color: Color(0xFFB0B0C0)),
+              style: TextStyle(fontSize: 14, color: Color(0xFF9E7B8A)),
             ),
             const SizedBox(height: 32),
             TextField(
@@ -81,7 +81,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             const SizedBox(height: 32),
             if (_isLoading)
               const Center(
-                child: CircularProgressIndicator(color: Color(0xFF6A1B9A)),
+                child: CircularProgressIndicator(color: Color(0xFFE91E8C)),
               )
             else
               ElevatedButton(
