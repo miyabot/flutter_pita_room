@@ -2,6 +2,8 @@ import 'package:bomb_chat/screens/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
+
 import '../providers.dart';
 import 'chat_screen.dart';
 import 'create_room_screen.dart';
@@ -14,17 +16,119 @@ class RoomListScreen extends ConsumerStatefulWidget {
 }
 
 class _RoomListScreenState extends ConsumerState<RoomListScreen> {
+  final GlobalKey _fabKey = GlobalKey();
+  final GlobalKey _profileKey = GlobalKey();
+  bool _tutorialShown = false;
+
+  // ① ウェルカムオーバーレイ（RPGセリフウィンドウ風）
+  void _showWelcomeOverlay() {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      barrierDismissible: false,
+      builder: (context) => _WelcomeDialog(
+        onFinished: () {
+          Navigator.pop(context);
+          _showCoachMark();
+        },
+      ),
+    );
+  }
+
+  // ② コーチマーク（FAB・プロフィールボタンを説明）
+  void _showCoachMark() {
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'fab',
+          keyTarget: _fabKey,
+          paddingFocus: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.only(left: 24, bottom: 32),
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '部屋を作成',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      shadows: [Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 4)],
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'ここから友達とのルームを作れるよ',
+                    style: TextStyle(
+                      color: Color(0xFFFFCDD2),
+                      fontSize: 14,
+                      shadows: [Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 4)],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        TargetFocus(
+          identify: 'profile',
+          keyTarget: _profileKey,
+          paddingFocus: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'プロフィール',
+                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'アイコンや名前を設定しよう',
+                    style: TextStyle(color: Color(0xFFFFCDD2), fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+      textSkip: 'スキップ',
+      alignSkip: Alignment.topLeft,
+      opacityShadow: 0.85,
+    ).show(context: context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final roomListState = ref.watch(roomsProvider);
 
     return roomListState.when(
       data: (rooms) {
+        // データ取得後・初回のみチュートリアルを起動
+        if (!_tutorialShown) {
+          _tutorialShown = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            await Future.delayed(const Duration(milliseconds: 400));
+            if (mounted) _showWelcomeOverlay();
+          });
+        }
+
         return Scaffold(
           appBar: AppBar(
             title: const Text('ルーム一覧'),
             actions: [
               IconButton(
+                key: _profileKey,
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -118,6 +222,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                   },
                 ),
           floatingActionButton: FloatingActionButton.extended(
+            key: _fabKey,
             onPressed: () {
               Navigator.push(
                 context,
@@ -144,6 +249,134 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+// RPGセリフウィンドウ風ウェルカムダイアログ
+class _WelcomeDialog extends StatefulWidget {
+  final VoidCallback onFinished;
+  const _WelcomeDialog({required this.onFinished});
+
+  @override
+  State<_WelcomeDialog> createState() => _WelcomeDialogState();
+}
+
+class _WelcomeDialogState extends State<_WelcomeDialog> {
+  static const _messages = [
+    'ようこそ ぴたルムへ！',
+    '友達と相性診断ゲームを\n一緒に楽しめるアプリだよ！',
+    'まずは部屋を作って\n友達を招待してみてね！',
+  ];
+  int _index = 0;
+
+  void _next() {
+    if (_index < _messages.length - 1) {
+      setState(() => _index++);
+    } else {
+      widget.onFinished();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLast = _index == _messages.length - 1;
+    return GestureDetector(
+      onTap: _next,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Column(
+          children: [
+            const Spacer(),
+            // フェアリー画像
+            Image.asset('assets/images/fairy.png', height: 180),
+            const SizedBox(height: 4),
+            // セリフウィンドウ
+            Container(
+              margin: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF5F8),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: const Color(0xFFE91E8C), width: 2.5),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x66E91E8C),
+                    offset: Offset(4, 4),
+                    blurRadius: 0,
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 名前プレート
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFE91E8C),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(2),
+                        topRight: Radius.circular(2),
+                      ),
+                    ),
+                    child: const Text(
+                      'ぴたルムのフェアリー',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  // セリフ本文
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _messages[_index],
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF2D1B33),
+                            height: 1.8,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            // ページドット
+                            ...List.generate(_messages.length, (i) => Container(
+                              margin: const EdgeInsets.only(right: 5),
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: i == _index
+                                    ? const Color(0xFFE91E8C)
+                                    : const Color(0xFFFFCDD2),
+                                borderRadius: BorderRadius.circular(1),
+                              ),
+                            )),
+                            const Spacer(),
+                            Text(
+                              isLast ? '▶ はじめる！' : '▼ タップして続ける',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF9E7B8A),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 52),
+          ],
+        ),
+      ),
     );
   }
 }

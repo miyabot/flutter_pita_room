@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../providers.dart';
 import 'invite_screen.dart';
@@ -19,10 +20,14 @@ class ChatScreen extends ConsumerStatefulWidget {
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _messageController = TextEditingController();
-  final _expandedAnswers = <String>{}; // 展開中の回答メッセージID
+  final _expandedAnswers = <String>{};
 
   late final String? _currentUid;
   late final GameNotifier _gameNotifier;
+
+  final GlobalKey _gameButtonKey = GlobalKey();
+  final GlobalKey _menuKey = GlobalKey();
+  static bool _chatTutorialShown = false;
 
   @override
   void initState() {
@@ -44,6 +49,88 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _gameNotifier.leaveGame(widget.roomId, _currentUid);
     }
     super.dispose();
+  }
+
+  void _showChatCoachMark() {
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'gameButton',
+          keyTarget: _gameButtonKey,
+          paddingFocus: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'ゲームを開始',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      shadows: [Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 4)],
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '全員が揃ったらここからゲームを始めよう！',
+                    style: TextStyle(
+                      color: Color(0xFFFFCDD2),
+                      fontSize: 14,
+                      shadows: [Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 4)],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        TargetFocus(
+          identify: 'menu',
+          keyTarget: _menuKey,
+          paddingFocus: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'メニュー',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      shadows: [Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 4)],
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '友達の招待やルーム名の変更はここから',
+                    style: TextStyle(
+                      color: Color(0xFFFFCDD2),
+                      fontSize: 14,
+                      shadows: [Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 4)],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+      textSkip: 'スキップ',
+      alignSkip: Alignment.topLeft,
+      opacityShadow: 0.85,
+    ).show(context: context);
   }
 
   Future<void> _sendMessage() async {
@@ -94,6 +181,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         final hasClosedResult = closedMembers.contains(currentUid);
         final status = (rawStatus == 'result' && hasClosedResult) ? 'waiting' : rawStatus;
 
+        if (!_chatTutorialShown && status == 'waiting') {
+          _chatTutorialShown = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            await Future.delayed(const Duration(milliseconds: 400));
+            if (mounted) _showChatCoachMark();
+          });
+        }
+
         return SafeArea(
           child: Scaffold(
             appBar: AppBar(
@@ -129,6 +224,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               actions: [
                 if (status == 'waiting')
                   IconButton(
+                    key: _gameButtonKey,
                     icon: const Icon(Icons.sports_esports),
                     tooltip: 'ゲーム開始',
                     onPressed: () {
@@ -158,6 +254,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     },
                   ),
                 PopupMenuButton<String>(
+                  key: _menuKey,
                   icon: const Icon(Icons.more_vert),
                   onSelected: (value) async {
                     switch (value) {
