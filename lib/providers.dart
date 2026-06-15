@@ -56,11 +56,11 @@ final messagesProvider = StreamProvider.family<List<MessageModel>, String>((ref,
 });
 
 final userAvatarProvider = StreamProvider.family<String,String>((ref,uid){
-  return ref.watch(firestoreProvider).
-      collection('users').
-      where('uid',isEqualTo: uid).
-      snapshots().
-      map((snapshot){
+  return ref.watch(firestoreProvider)
+      .collection('users')
+      .where('uid', isEqualTo: uid)
+      .snapshots()
+      .map((snapshot) {
         if (snapshot.docs.isEmpty) return '';
         return snapshot.docs.first.data()['avatarUrl'] as String? ?? '';
       });
@@ -132,6 +132,10 @@ class AuthNotifier extends AsyncNotifier<void> {
         'userId': _generateUserId(),
         'uid': credential.user!.uid,
         'name': '',
+        'tutorial': {
+          'roomList': false,
+          'chatRoom': false,
+        }
       });
 
       state = const AsyncValue.data(null);
@@ -147,16 +151,12 @@ class AuthNotifier extends AsyncNotifier<void> {
     return List.generate(6, (_) => chars[random.nextInt(chars.length)]).join();
   }
 
-  Future<void> saveName(String name)async{
+  Future<void> saveName(String name) async {
     final uid = ref.read(authProvider).currentUser?.uid;
-    if(uid == null)return;
-
-    final query = await ref.read(firestoreProvider).collection('users').where('uid',isEqualTo: uid).get();
+    if (uid == null) return;
+    final query = await ref.read(firestoreProvider).collection('users').where('uid', isEqualTo: uid).get();
     if (query.docs.isEmpty) return;
-    await ref.read(firestoreProvider)
-      .collection('users')
-      .doc(query.docs.first.id)
-      .update({'name': name});
+    await query.docs.first.reference.update({'name': name});
   }
 
   Future<void> uploadAvatar(String filePath) async {
@@ -171,9 +171,9 @@ class AuthNotifier extends AsyncNotifier<void> {
     //ダウンロードURLの取得
     final url = await storageRef.getDownloadURL();
 
-    final query = await ref.read(firestoreProvider).collection('users').where('uid',isEqualTo: uid).get();
-    if(query.docs.isEmpty) return;
-    await ref.read(firestoreProvider).collection('users').doc(query.docs.first.id).update({'avatarUrl': url});
+    final query = await ref.read(firestoreProvider).collection('users').where('uid', isEqualTo: uid).get();
+    if (query.docs.isEmpty) return;
+    await query.docs.first.reference.update({'avatarUrl': url});
   }
 
   /// アカウントを完全に削除する

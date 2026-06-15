@@ -29,11 +29,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final GlobalKey _menuKey = GlobalKey();
   static bool _chatTutorialShown = false;
 
+  bool _chatRoomDone = false;
+  bool _tutorialLoaded = false;
+
   @override
   void initState() {
     super.initState();
     _currentUid = ref.read(authProvider).currentUser?.uid;
     _gameNotifier = ref.read(gameNotifierProvider.notifier);
+    _loadTutorialStatus();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_currentUid != null) {
@@ -51,8 +55,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.dispose();
   }
 
+  Future<void> _loadTutorialStatus() async {
+    final uid = ref.read(authProvider).currentUser?.uid;
+    if (uid == null) return;
+    final query = await ref.read(firestoreProvider)
+        .collection('users')
+        .where('uid', isEqualTo: uid)
+        .get();
+    if (!mounted) return;
+    final tutorialMap = query.docs.isEmpty ? null : query.docs.first.data()['tutorial'];
+    setState(() {
+      if (tutorialMap is Map) {
+        _chatRoomDone = tutorialMap['chatRoom'] == true;
+      }
+      _tutorialLoaded = true;
+    });
+  }
+
   void _showChatCoachMark() {
     TutorialCoachMark(
+      onFinish: () async {
+        final uid = ref.read(authProvider).currentUser?.uid;
+        if (uid == null) return;
+        final query = await ref.read(firestoreProvider)
+            .collection('users')
+            .where('uid', isEqualTo: uid)
+            .get();
+        if (query.docs.isEmpty) return;
+        await query.docs.first.reference.update({'tutorial.chatRoom': true});
+      },
       targets: [
         TargetFocus(
           identify: 'gameButton',
@@ -130,6 +161,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       textSkip: 'スキップ',
       alignSkip: Alignment.topLeft,
       opacityShadow: 0.85,
+      onSkip: () {
+        final uid = ref.read(authProvider).currentUser?.uid;
+        if (uid != null) {
+          ref.read(firestoreProvider)
+              .collection('users')
+              .where('uid', isEqualTo: uid)
+              .get()
+              .then((query) {
+            if (query.docs.isNotEmpty) {
+              query.docs.first.reference.update({'tutorial.chatRoom': true});
+            }
+          });
+        }
+        return true;
+      },
     ).show(context: context);
   }
 
@@ -181,8 +227,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         final hasClosedResult = closedMembers.contains(currentUid);
         final status = (rawStatus == 'result' && hasClosedResult) ? 'waiting' : rawStatus;
 
-        if (!_chatTutorialShown && status == 'waiting') {
+        if (!_chatTutorialShown && status == 'waiting' && !_chatRoomDone && _tutorialLoaded) {
           _chatTutorialShown = true;
+          _chatRoomDone = true;
           WidgetsBinding.instance.addPostFrameCallback((_) async {
             await Future.delayed(const Duration(milliseconds: 400));
             if (mounted) _showChatCoachMark();

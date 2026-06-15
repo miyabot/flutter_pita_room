@@ -18,7 +18,9 @@ class RoomListScreen extends ConsumerStatefulWidget {
 class _RoomListScreenState extends ConsumerState<RoomListScreen> {
   final GlobalKey _fabKey = GlobalKey();
   final GlobalKey _profileKey = GlobalKey();
-  bool _tutorialShown = false;
+
+  bool _roomListDone = false;
+  bool _tutorialLoaded = false;
 
   // ① ウェルカムオーバーレイ（RPGセリフウィンドウ風）
   void _showWelcomeOverlay() {
@@ -27,9 +29,17 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
       barrierColor: Colors.black.withValues(alpha: 0.85),
       barrierDismissible: false,
       builder: (context) => _WelcomeDialog(
-        onFinished: () {
+        onFinished: () async {
           Navigator.pop(context);
           _showCoachMark();
+          final uid = ref.read(authProvider).currentUser?.uid;
+          if (uid == null) return;
+          final query = await ref.read(firestoreProvider)
+              .collection('users')
+              .where('uid', isEqualTo: uid)
+              .get();
+          if (query.docs.isEmpty) return;
+          await query.docs.first.reference.update({'tutorial.roomList': true});
         },
       ),
     );
@@ -109,14 +119,39 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _loadTutorialStatus();
+  }
+
+  Future<void> _loadTutorialStatus() async {
+    final uid = ref.read(authProvider).currentUser?.uid;
+    if (uid == null) return;
+    final query = await ref.read(firestoreProvider)
+        .collection('users')
+        .where('uid', isEqualTo: uid)
+        .get();
+    if (!mounted) return;
+    final tutorialMap = query.docs.isEmpty ? null : query.docs.first.data()['tutorial'];
+    setState(() {
+      if (tutorialMap is Map) {
+        _roomListDone = tutorialMap['roomList'] == true;
+      }
+      _tutorialLoaded = true;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final roomListState = ref.watch(roomsProvider);
 
     return roomListState.when(
       data: (rooms) {
-        // データ取得後・初回のみチュートリアルを起動
-        if (!_tutorialShown) {
-          _tutorialShown = true;
+        
+
+        // Firestore読み込み完了後・未表示のときだけ起動
+        if (_tutorialLoaded && !_roomListDone) {
+          _roomListDone = true;
           WidgetsBinding.instance.addPostFrameCallback((_) async {
             await Future.delayed(const Duration(milliseconds: 400));
             if (mounted) _showWelcomeOverlay();
