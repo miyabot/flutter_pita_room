@@ -15,16 +15,27 @@ class RegisterScreen extends ConsumerStatefulWidget {
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmController = TextEditingController();
   bool _isLoading = false;
+  bool _passwordVisible = false;
+  bool _confirmVisible = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmController.dispose();
     super.dispose();
   }
 
   Future<void> _register() async {
+    if (_passwordController.text != _confirmController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('パスワードが一致しません')),
+      );
+      return;
+    }
+
     FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
 
@@ -35,13 +46,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       );
       if (mounted) Navigator.of(context).pop();
     } on FirebaseAuthException catch (e) {
-        final message = authErrorMessage(e.code);
+      final message = authErrorMessage(e.code);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message)),
         );
       }
-    }finally {
+    } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -72,11 +83,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: _passwordController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'パスワード',
-                prefixIcon: Icon(Icons.lock_outline),
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  icon: Icon(_passwordVisible ? Icons.visibility_off : Icons.visibility),
+                  onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
+                ),
               ),
-              obscureText: true,
+              obscureText: !_passwordVisible,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _confirmController,
+              decoration: InputDecoration(
+                labelText: 'パスワード（確認）',
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  icon: Icon(_confirmVisible ? Icons.visibility_off : Icons.visibility),
+                  onPressed: () => setState(() => _confirmVisible = !_confirmVisible),
+                ),
+              ),
+              obscureText: !_confirmVisible,
             ),
             const SizedBox(height: 32),
             if (_isLoading)

@@ -1,4 +1,4 @@
-package com.miyamoto.bomb_app
+package com.miyamoto.pitarumu
 
 import io.flutter.embedding.android.FlutterActivity
 

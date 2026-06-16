@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "293464700678",
+    "firebase_url": "https://bomb-chat-6da2d-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "bomb-chat-6da2d",
     "storage_bucket": "bomb-chat-6da2d.firebasestorage.app"
   },
@@ -10,6 +11,25 @@
         "mobilesdk_app_id": "1:293464700678:android:ff0f365e44fd3829a35087",
         "android_client_info": {
           "package_name": "com.example.bomb_chat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3e9nL3yCMV88uEUAawtAT1NMQziyHChI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:293464700678:android:2a84897981e47f9ca35087",
+        "android_client_info": {
+          "package_name": "com.miyamoto.pitarumu"
         }
       },
       "oauth_client": [],

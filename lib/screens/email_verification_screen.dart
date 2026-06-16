@@ -20,6 +20,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
     try {
       // reload() でサーバーから最新の認証状態を取得
       await ref.read(authProvider).currentUser?.reload();
+      await ref.read(authProvider).currentUser?.getIdToken(true);
       final isVerified = ref.read(authProvider).currentUser?.emailVerified ?? false;
 
       if (!isVerified && mounted) {

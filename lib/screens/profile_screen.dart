@@ -50,39 +50,39 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (!mounted) return;
 
     // ② パスワード確認ダイアログ（再認証に必要）
-    final password = await showDialog<String>(
+    String enteredPassword = '';
+    final passwordConfirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('パスワードを確認'),
         content: TextField(
-          controller: passwordController,
           obscureText: true,
           autofocus: true,
           decoration: const InputDecoration(
             labelText: 'パスワード',
             prefixIcon: Icon(Icons.lock_outline),
           ),
+          onChanged: (value) => enteredPassword = value,
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('キャンセル'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, passwordController.text),
+            onPressed: () => Navigator.pop(context, true),
             child: const Text('確認'),
           ),
         ],
       ),
     );
-    passwordController.dispose();
-    if (password == null || password.isEmpty) return;
+    if (passwordConfirmed != true || enteredPassword.isEmpty) return;
     if (!mounted) return;
 
     // ③ 削除実行
     setState(() => _isDeleting = true);
     try {
-      await ref.read(authNotifierProvider.notifier).deleteAccount(password);
+      await ref.read(authNotifierProvider.notifier).deleteAccount(enteredPassword);
       // 削除完了後にルートへ戻す
       // （currentUserProvider が先に null になって「データなし」が映るのを防ぐ）
       if (mounted) {
@@ -187,6 +187,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ? SizedBox(
                                 width: 200,
                                 child: TextField(
+                                  maxLength: 10,
                                   controller: _nameController,
                                   autofocus: true,
                                   decoration: const InputDecoration(

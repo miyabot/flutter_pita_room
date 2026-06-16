@@ -1,5 +1,4 @@
 import 'package:bomb_chat/screens/profile_setup_screen.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -7,10 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'firebase_options.dart';
 import 'providers.dart';
+import 'screens/email_verification_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/room_list_screen.dart';
-
-import 'package:device_preview/device_preview.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -142,8 +140,11 @@ class MyApp extends ConsumerWidget {
       ),
       home: authState.when(
         data: (user){
-          if(user == null){
+          if (user == null) {
             return const LoginScreen();
+          }
+          if (!user.emailVerified) {
+            return const EmailVerificationScreen();
           }
           // nameが設定されているか確認
           return ref.watch(currentUserProvider).when(
@@ -156,7 +157,9 @@ class MyApp extends ConsumerWidget {
             loading: () => const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             ),
-            error: (e, s) => const RoomListScreen(),
+            error: (e, s) => const Scaffold(
+              body: Center(child: CircularProgressIndicator(color: Color(0xFFE91E8C))),
+            ),
           );
         },
         loading: () => const Scaffold(

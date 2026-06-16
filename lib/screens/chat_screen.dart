@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../providers.dart';
+import '../data/questions.dart';
 import 'invite_screen.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -315,17 +316,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         break;
 
                       case 'rename':
-                        final nameController = TextEditingController();
-                        final newName =await showDialog<bool>(
-                          context: context, 
-                          builder: (context)=>AlertDialog(
-                            title:const Text('ルーム名の変更'),
+                        String roomName = '';
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('ルーム名の変更'),
                             content: TextField(
-                              controller: nameController,
-                              decoration: InputDecoration(
-                                labelText: '新しいルーム名'
+                              decoration: const InputDecoration(
+                                labelText: '新しいルーム名',
                               ),
                               autofocus: true,
+                              onChanged: (value) => roomName = value,
                             ),
                             actions: [
                               TextButton(
@@ -337,12 +338,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                 child: const Text('変更'),
                               ),
                             ],
-                          )
+                          ),
                         );
-                        nameController.dispose();
-                        if(newName != true) return;
-                        if(!context.mounted) return;
-                        await ref.read(roomNotifierProvider.notifier).renameRoom(widget.roomId,nameController.text);
+                        if (confirmed != true) break;
+                        if (!context.mounted) break;
+                        await ref.read(roomNotifierProvider.notifier).renameRoom(widget.roomId, roomName);
                         break;
 
                       case 'leave':

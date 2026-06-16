@@ -28,40 +28,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _resetPassword() async {
-    // メール欄に入力済みの値をダイアログに初期表示する
-    final emailController = TextEditingController(text: _emailController.text.trim());
+    String resetEmail = _emailController.text.trim();
 
-    final email = await showDialog<String>(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('パスワードをリセット'),
         content: TextField(
-          controller: emailController,
           keyboardType: TextInputType.emailAddress,
           autofocus: true,
           decoration: const InputDecoration(
             labelText: 'メールアドレス',
             prefixIcon: Icon(Icons.email_outlined),
           ),
+          onChanged: (value) => resetEmail = value,
+          controller: TextEditingController(text: resetEmail),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('キャンセル'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, emailController.text.trim()),
+            onPressed: () => Navigator.pop(context, true),
             child: const Text('送信'),
           ),
         ],
       ),
     );
-    emailController.dispose();
 
-    if (email == null || email.isEmpty) return;
+    if (confirmed != true || resetEmail.isEmpty) return;
 
     try {
-      await ref.read(authProvider).sendPasswordResetEmail(email: email);
+      await ref.read(authProvider).sendPasswordResetEmail(email: resetEmail);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('パスワードリセットメールを送信しました')),

@@ -68,6 +68,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               ),
               const SizedBox(height: 48),
               TextField(
+                maxLength: 10,
                 controller: _nameController,
                 decoration: const InputDecoration(
                   labelText: '表示名',
