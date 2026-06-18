@@ -1,0 +1,43 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isRoomMember(roomId) {
+      let room = get(/databases/$(database)/documents/rooms/$(roomId)).data;
+      // 退会処理の最終段階（自分を外した直後）にメッセージを削除できるよう、
+      // メンバーが0人になったルームに対しても許可する
+      return isSignedIn() && (request.auth.uid in room.members || room.members.size() == 0);
+    }
+
+    // users コレクション
+    // ドキュメントIDはランダム生成のため、uid フィールドで本人確認を行う
+    match /users/{userDoc} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // rooms コレクション
+    match /rooms/{roomId} {
+      allow read: if isSignedIn() &&
+        (request.auth.uid in resource.data.members || resource.data.members.size() == 0);
+      allow create: if isSignedIn() &&
+        request.auth.uid == request.resource.data.createdBy &&
+        request.auth.uid in request.resource.data.members;
+      allow update: if isSignedIn() && request.auth.uid in resource.data.members;
+      allow delete: if isSignedIn() && resource.data.members.size() == 0;
+
+      // messages サブコレクション
+      match /messages/{messageId} {
+        allow read, create: if isRoomMember(roomId);
+        allow delete: if isRoomMember(roomId);
+        allow update: if false;
+      }
+    }
+  }
+}

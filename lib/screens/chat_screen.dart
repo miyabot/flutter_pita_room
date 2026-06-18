@@ -861,98 +861,162 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
 
                 if (status == 'result')
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFCE4EC),
-                      border: Border(
-                        bottom: BorderSide(color: Color(0xFFE91E8C), width: 2),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text(
-                          '🎉 結果発表！',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF2D1B33),
-                          ),
-                          textAlign: TextAlign.center,
+                  Builder(builder: (context) {
+                    // 自分以外の全員とのマッチング率を計算する
+                    final matchResults = gameState.activeMembers
+                        .where((uid) => uid != currentUid)
+                        .map((uid) {
+                      final sortedUids = [currentUid!, uid]..sort();
+                      final key = '${sortedUids[0]}_${sortedUids[1]}';
+                      final score = gameState.scores[key] ?? 0;
+                      final total = gameState.totalQuestions;
+                      final percent = (score / total * 100).round();
+                      return MapEntry(uid, percent);
+                    }).toList();
+
+                    // 一番マッチング率が高い相手を採用する
+                    final topMatch = matchResults.isEmpty
+                        ? null
+                        : matchResults.reduce((a, b) => a.value >= b.value ? a : b);
+                    final topPercent = topMatch?.value ?? 0;
+                    final topName = topMatch == null
+                        ? ''
+                        : (ref.watch(userNameProvider(topMatch.key)).value ?? '...');
+
+                    // 一番マッチング率が高い相手に応じてフェアリーのコメントを変える
+                    final String fairyComment;
+                    if (topMatch == null) {
+                      fairyComment = '結果が出たよ！';
+                    } else if (topPercent >= 80) {
+                      fairyComment = '$topNameさんとは$topPercent%！\nすごくぴったりだね！';
+                    } else if (topPercent >= 60) {
+                      fairyComment = '$topNameさんとは$topPercent%！\nなかなかいい感じだね！';
+                    } else if (topPercent >= 40) {
+                      fairyComment = '$topNameさんとは$topPercent%！\nまあまあの結果だね！';
+                    } else {
+                      fairyComment = '$topNameさんとは$topPercent%！\n個性が出た結果だね！';
+                    }
+
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFCE4EC),
+                        border: Border(
+                          bottom: BorderSide(color: Color(0xFFE91E8C), width: 2),
                         ),
-                        const SizedBox(height: 16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text(
+                            '🎉 結果発表！',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2D1B33),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 12),
 
-                        // 全員とのマッチング率を表示
-                        ...gameState.activeMembers
-                            .where((uid) => uid != currentUid)
-                            .map((uid) {
-                          // スコアキーは uid1_uid2 の形式
-                          // uid1 < uid2 になるように並べる
-                          final sortedUids = [currentUid!, uid]..sort();
-                          final key = '${sortedUids[0]}_${sortedUids[1]}';
-
-                          final score = gameState.scores[key] ?? 0;
-                          final total = gameState.totalQuestions;
-                          final percent = (score / total * 100).round();
-
-                          final nameAsync = ref.watch(userNameProvider(uid));
-                          final name = nameAsync.value ?? '...';
-
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      name,
-                                      style: const TextStyle(
-                                        color: Color(0xFF2D1B33),
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(
-                                      '$percent%',
-                                      style: TextStyle(
-                                        color: percent >= 60
-                                            ? const Color(0xFF4CAF50)
-                                            : const Color(0xFF9E7B8A),
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                // プログレスバー
-                                LinearProgressIndicator(
-                                  value: percent / 100,
-                                  backgroundColor: const Color(0xFFF8BBD0),
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    percent >= 60
-                                        ? const Color(0xFF4CAF50)
-                                        : const Color(0xFFE91E8C),
-                                  ),
+                          // フェアリーのセリフウィンドウ
+                          Image.asset('assets/images/fairy.png', height: 96),
+                          const SizedBox(height: 4),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: const Color(0xFFE91E8C), width: 2),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x33E91E8C),
+                                  offset: Offset(3, 3),
+                                  blurRadius: 0,
                                 ),
                               ],
                             ),
-                          );
-                        }),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            child: Text(
+                              fairyComment,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF2D1B33),
+                                height: 1.6,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
 
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () {
-                            if (currentUid == null) return;
-                            ref.read(gameNotifierProvider.notifier)
-                                .closeResult(widget.roomId, currentUid, gameState.activeMembers);
-                          },
-                          child: const Text('結果を閉じる'),
-                        ),
-                      ],
-                    ),
-                  ),
+                          // 全員とのマッチング率を表示
+                          ...gameState.activeMembers
+                              .where((uid) => uid != currentUid)
+                              .map((uid) {
+                            final sortedUids = [currentUid!, uid]..sort();
+                            final key = '${sortedUids[0]}_${sortedUids[1]}';
+
+                            final score = gameState.scores[key] ?? 0;
+                            final total = gameState.totalQuestions;
+                            final percent = (score / total * 100).round();
+
+                            final nameAsync = ref.watch(userNameProvider(uid));
+                            final name = nameAsync.value ?? '...';
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: const TextStyle(
+                                          color: Color(0xFF2D1B33),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        '$percent%',
+                                        style: TextStyle(
+                                          color: percent >= 60
+                                              ? const Color(0xFF4CAF50)
+                                              : const Color(0xFF9E7B8A),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  // プログレスバー
+                                  LinearProgressIndicator(
+                                    value: percent / 100,
+                                    backgroundColor: const Color(0xFFF8BBD0),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      percent >= 60
+                                          ? const Color(0xFF4CAF50)
+                                          : const Color(0xFFE91E8C),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              if (currentUid == null) return;
+                              ref.read(gameNotifierProvider.notifier)
+                                  .closeResult(widget.roomId, currentUid, gameState.activeMembers);
+                            },
+                            child: const Text('結果を閉じる'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
 
                 // ─── メッセージ入力バー ───
                 if (status == 'waiting')

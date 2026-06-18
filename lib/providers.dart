@@ -116,6 +116,19 @@ final userNameProvider = StreamProvider.family<String, String>((ref, uid) {
       });
 });
 
+/// ルーム削除前に、配下のmessagesサブコレクションを削除する
+/// （Firestoreは親ドキュメントを削除してもサブコレクションは自動で消えないため）
+Future<void> _deleteRoomMessages(FirebaseFirestore firestore, String roomId) async {
+  final messages = await firestore
+      .collection('rooms')
+      .doc(roomId)
+      .collection('messages')
+      .get();
+  for (final message in messages.docs) {
+    await message.reference.delete();
+  }
+}
+
 /// アカウント登録処理およびFirestoreへの初期ユーザー情報登録を行うクラス
 class AuthNotifier extends AsyncNotifier<void> {
   Future<void> register(String email, String password) async {
@@ -215,7 +228,10 @@ class AuthNotifier extends AsyncNotifier<void> {
       });
       final updated  = await doc.reference.get();
       final members  = List<String>.from(updated.data()?['members'] ?? []);
-      if (members.isEmpty) await doc.reference.delete();
+      if (members.isEmpty) {
+        await _deleteRoomMessages(ref.read(firestoreProvider), doc.id);
+        await doc.reference.delete();
+      }
     }
 
     // ④ Firestore のユーザードキュメントを削除
@@ -283,6 +299,7 @@ class RoomNotifier extends Notifier<void> {
     // membersが空になったらルームを削除
     final members = List<String>.from(data['members'] ?? []);
     if(members.isEmpty){
+      await _deleteRoomMessages(ref.read(firestoreProvider), roomId);
       await docRef.delete();
     }
   }
@@ -375,26 +392,26 @@ class GameNotifier extends Notifier<void> {
   Future<void> submitAnswer(String roomId,String uid,int answerIndex,List<String> activeMembers)async{
     final docRef = ref.read(firestoreProvider).collection('rooms').doc(roomId);
 
-    //自分の回答を保存
-    await docRef.update({
-      'gameState.answers.$uid':answerIndex,
+    // 読み取りと書き込みを1つの不可分な操作にまとめることで、
+    // 複数人が同時に回答しても「全員回答済み」の判定が正しく行われるようにする
+    final allAnswered = await ref.read(firestoreProvider).runTransaction((transaction) async {
+      final snapshot = await transaction.get(docRef);
+      final data = snapshot.data();
+      if (data == null) return false;
+
+      final gameState = Map<String, dynamic>.from(data['gameState'] ?? {});
+      final answers = Map<String, dynamic>.from(gameState['answers'] ?? {});
+      answers[uid] = answerIndex;
+
+      transaction.update(docRef, {
+        'gameState.answers.$uid': answerIndex,
+      });
+
+      return activeMembers.every((memberId) => answers.containsKey(memberId));
     });
 
-    //最新データを取得して全員が回答したか確認
-    final doc = await docRef.get();
-    final data = doc.data();
-    if(data == null)return;
-
-    final gameState = data['gameState'] as Map<String,dynamic>? ?? {};
-    final answers = gameState['answers'] as Map<String,dynamic>? ?? {};
-
-    //activeMembers全員が回答したか確認
-    final allAnswered = activeMembers.every(
-      (memberId) => answers.containsKey(memberId),
-    );
-
-    if(allAnswered){
-      await nextQuestion(roomId,activeMembers);
+    if (allAnswered) {
+      await nextQuestion(roomId, activeMembers);
     }
   }
 

@@ -19,6 +19,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _passwordVisible = false;
 
   @override
   void dispose() {
@@ -157,11 +158,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 16),
                     TextField(
                       controller: _passwordController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'パスワード',
-                        prefixIcon: Icon(Icons.lock_outline),
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(_passwordVisible ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
+                        ),
                       ),
-                      obscureText: true,
+                      obscureText: !_passwordVisible,
                     ),
                     Align(
                       alignment: Alignment.centerRight,

@@ -51,29 +51,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     // ② パスワード確認ダイアログ（再認証に必要）
     String enteredPassword = '';
+    bool passwordVisible = false;
     final passwordConfirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('パスワードを確認'),
-        content: TextField(
-          obscureText: true,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'パスワード',
-            prefixIcon: Icon(Icons.lock_outline),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('パスワードを確認'),
+          content: TextField(
+            obscureText: !passwordVisible,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'パスワード',
+              prefixIcon: const Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(passwordVisible ? Icons.visibility_off : Icons.visibility),
+                onPressed: () => setDialogState(() => passwordVisible = !passwordVisible),
+              ),
+            ),
+            onChanged: (value) => enteredPassword = value,
           ),
-          onChanged: (value) => enteredPassword = value,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('キャンセル'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('確認'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('キャンセル'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('確認'),
-          ),
-        ],
       ),
     );
     if (passwordConfirmed != true || enteredPassword.isEmpty) return;
