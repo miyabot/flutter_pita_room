@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers.dart';
+import '../utils/constants.dart';
 
 class InviteScreen extends ConsumerStatefulWidget {
   final String roomId;
 
-  const InviteScreen({
-    super.key,
-    required this.roomId,
-  });
+  const InviteScreen({super.key, required this.roomId});
 
   @override
   ConsumerState<InviteScreen> createState() => _InviteScreenState();
@@ -18,12 +16,14 @@ class InviteScreen extends ConsumerStatefulWidget {
 class _InviteScreenState extends ConsumerState<InviteScreen> {
   final _userIdController = TextEditingController();
 
+  //画面破棄時にコントローラーを解放する関数
   @override
   void dispose() {
     _userIdController.dispose();
     super.dispose();
   }
 
+  //招待IDでユーザーをルームに追加する関数
   Future<void> _inviteUser() async {
     final inviteCode = _userIdController.text.trim();
     if (inviteCode.isEmpty) return;
@@ -31,32 +31,32 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
     FocusScope.of(context).unfocus();
 
     try {
-      final isSuccess = await ref.read(roomNotifierProvider.notifier).inviteUserByCode(
-            roomId: widget.roomId,
-            inviteCode: inviteCode,
-          );
+      final isSuccess = await ref
+          .read(roomNotifierProvider.notifier)
+          .inviteUserByCode(roomId: widget.roomId, inviteCode: inviteCode);
 
       if (mounted) {
         if (isSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('追加しました！')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('追加しました！')));
           _userIdController.clear();
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('ユーザーが見つかりませんでした')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('ユーザーが見つかりませんでした')));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('招待処理中にエラーが発生しました: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('招待処理中にエラーが発生しました: $e')));
       }
     }
   }
 
+  //ユーザー招待画面のUIを構築する関数
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -75,7 +75,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
             TextField(
               controller: _userIdController,
               decoration: const InputDecoration(
-                labelText: 'ユーザー招待ID（6桁）',
+                labelText: 'ユーザー招待ID（$kInviteCodeLength桁）',
                 prefixIcon: Icon(Icons.person_add_outlined),
               ),
               textInputAction: TextInputAction.done,

@@ -1,5 +1,5 @@
-import 'package:bomb_chat/utils/app_links.dart';
-import 'package:bomb_chat/utils/auth_error_message.dart';
+import 'package:pita_room/utils/app_links.dart';
+import 'package:pita_room/utils/auth_error_message.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +21,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
   bool _passwordVisible = false;
 
+  //画面破棄時にコントローラーを解放する関数
   @override
   void dispose() {
     _emailController.dispose();
@@ -28,6 +29,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
+  //パスワードリセットメールを送信する関数
   Future<void> _resetPassword() async {
     String resetEmail = _emailController.text.trim();
 
@@ -63,41 +65,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       await ref.read(authProvider).sendPasswordResetEmail(email: resetEmail);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('パスワードリセットメールを送信しました')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('パスワードリセットメールを送信しました')));
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(authErrorMessage(e.code))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(authErrorMessage(e.code))));
       }
     }
   }
 
+  //メールアドレスとパスワードでログインする関数
   Future<void> _login() async {
     FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
 
     try {
-      await ref.read(authProvider).signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-    }on FirebaseAuthException catch (e) {
-      // FirebaseAuthのエラーコードを日本語に変換
+      await ref
+          .read(authProvider)
+          .signInWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
+    } on FirebaseAuthException catch (e) {
       final message = authErrorMessage(e.code);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  //ログイン画面のUIを構築する関数
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -117,10 +122,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 child: Column(
                   children: [
-                    Image.asset(
-                      'assets/images/fairy.png',
-                      height: 120,
-                    ),
+                    Image.asset('assets/images/fairy.png', height: 120),
                     const SizedBox(height: 12),
                     const Text(
                       'ぴたルム',
@@ -162,8 +164,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         labelText: 'パスワード',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
-                          icon: Icon(_passwordVisible ? Icons.visibility_off : Icons.visibility),
-                          onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
+                          icon: Icon(
+                            _passwordVisible
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () => setState(
+                            () => _passwordVisible = !_passwordVisible,
+                          ),
                         ),
                       ),
                       obscureText: !_passwordVisible,
@@ -178,7 +186,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 16),
                     if (_isLoading)
                       const Center(
-                        child: CircularProgressIndicator(color: Color(0xFFE91E8C)),
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFE91E8C),
+                        ),
                       )
                     else ...[
                       SizedBox(
@@ -193,7 +203,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterScreen(),
+                            ),
                           );
                         },
                         child: const Text('アカウントをお持ちでない方はこちら'),
@@ -203,18 +215,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           TextButton(
-                            onPressed: () => launchUrl(Uri.parse(kPrivacyPolicyUrl)),
+                            onPressed: () =>
+                                launchUrl(Uri.parse(kPrivacyPolicyUrl)),
                             child: const Text(
                               'プライバシーポリシー',
-                              style: TextStyle(fontSize: 12, color: Color(0xFFAD5D7A)),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFFAD5D7A),
+                              ),
                             ),
                           ),
-                          const Text('・', style: TextStyle(color: Color(0xFFAD5D7A))),
+                          const Text(
+                            '・',
+                            style: TextStyle(color: Color(0xFFAD5D7A)),
+                          ),
                           TextButton(
-                            onPressed: () => launchUrl(Uri.parse(kTermsOfServiceUrl)),
+                            onPressed: () =>
+                                launchUrl(Uri.parse(kTermsOfServiceUrl)),
                             child: const Text(
                               '利用規約',
-                              style: TextStyle(fontSize: 12, color: Color(0xFFAD5D7A)),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFFAD5D7A),
+                              ),
                             ),
                           ),
                         ],

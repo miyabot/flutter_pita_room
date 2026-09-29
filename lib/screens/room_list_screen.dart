@@ -1,10 +1,11 @@
-import 'package:bomb_chat/screens/profile_screen.dart';
+import 'package:pita_room/screens/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../providers.dart';
+import '../utils/constants.dart';
 import 'chat_screen.dart';
 import 'create_room_screen.dart';
 
@@ -22,7 +23,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
   bool _roomListDone = false;
   bool _tutorialLoaded = false;
 
-  // ① ウェルカムオーバーレイ（RPGセリフウィンドウ風）
+  //初回起動時のウェルカムダイアログを表示する関数
   void _showWelcomeOverlay() {
     showDialog(
       context: context,
@@ -34,7 +35,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
           _showCoachMark();
           final uid = ref.read(authProvider).currentUser?.uid;
           if (uid == null) return;
-          final query = await ref.read(firestoreProvider)
+          final query = await ref
+              .read(firestoreProvider)
               .collection('users')
               .where('uid', isEqualTo: uid)
               .get();
@@ -45,7 +47,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
     );
   }
 
-  // ② コーチマーク（FAB・プロフィールボタンを説明）
+  //FABとプロフィールボタンを説明するコーチマークを表示する関数
   void _showCoachMark() {
     TutorialCoachMark(
       targets: [
@@ -68,7 +70,13 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                       color: Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      shadows: [Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 4)],
+                      shadows: [
+                        Shadow(
+                          color: Colors.black54,
+                          offset: Offset(1, 1),
+                          blurRadius: 4,
+                        ),
+                      ],
                     ),
                   ),
                   SizedBox(height: 8),
@@ -77,7 +85,13 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                     style: TextStyle(
                       color: Color(0xFFFFCDD2),
                       fontSize: 14,
-                      shadows: [Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 4)],
+                      shadows: [
+                        Shadow(
+                          color: Colors.black54,
+                          offset: Offset(1, 1),
+                          blurRadius: 4,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -99,7 +113,11 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                 children: [
                   Text(
                     'プロフィール',
-                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   SizedBox(height: 8),
                   Text(
@@ -118,21 +136,26 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
     ).show(context: context);
   }
 
+  //画面初期化時にチュートリアル状態を読み込む関数
   @override
   void initState() {
     super.initState();
     _loadTutorialStatus();
   }
 
+  //チュートリアルを表示済みかFirestoreから取得する関数
   Future<void> _loadTutorialStatus() async {
     final uid = ref.read(authProvider).currentUser?.uid;
     if (uid == null) return;
-    final query = await ref.read(firestoreProvider)
+    final query = await ref
+        .read(firestoreProvider)
         .collection('users')
         .where('uid', isEqualTo: uid)
         .get();
     if (!mounted) return;
-    final tutorialMap = query.docs.isEmpty ? null : query.docs.first.data()['tutorial'];
+    final tutorialMap = query.docs.isEmpty
+        ? null
+        : query.docs.first.data()['tutorial'];
     setState(() {
       if (tutorialMap is Map) {
         _roomListDone = tutorialMap['roomList'] == true;
@@ -141,19 +164,17 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
     });
   }
 
+  //ルーム一覧画面のUIを構築する関数
   @override
   Widget build(BuildContext context) {
     final roomListState = ref.watch(roomsProvider);
 
     return roomListState.when(
       data: (rooms) {
-        
-
-        // Firestore読み込み完了後・未表示のときだけ起動
         if (_tutorialLoaded && !_roomListDone) {
           _roomListDone = true;
           WidgetsBinding.instance.addPostFrameCallback((_) async {
-            await Future.delayed(const Duration(milliseconds: 400));
+            await Future.delayed(kTutorialShowDelay);
             if (mounted) _showWelcomeOverlay();
           });
         }
@@ -167,7 +188,9 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const ProfileScreen(),
+                    ),
                   );
                 },
                 icon: const Icon(Icons.person_outline),
@@ -191,12 +214,18 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                       const SizedBox(height: 16),
                       const Text(
                         '参加している部屋がありません',
-                        style: TextStyle(fontSize: 16, color: Color(0xFF9E7B8A)),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF9E7B8A),
+                        ),
                       ),
                       const SizedBox(height: 8),
                       const Text(
                         '右下のボタンから部屋を作成しましょう',
-                        style: TextStyle(fontSize: 12, color: Color(0xFFAD5D7A)),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFFAD5D7A),
+                        ),
                       ),
                     ],
                   ),
@@ -207,7 +236,10 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                   itemBuilder: (context, index) {
                     final room = rooms[index];
                     return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
                       child: InkWell(
                         onTap: () {
                           Navigator.push(
@@ -228,7 +260,10 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFFCE4EC),
                                   borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: const Color(0xFFFFCDD2), width: 1.5),
+                                  border: Border.all(
+                                    color: const Color(0xFFFFCDD2),
+                                    width: 1.5,
+                                  ),
                                 ),
                                 child: const Icon(
                                   Icons.meeting_room_rounded,
@@ -248,7 +283,10 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const Icon(Icons.chevron_right, color: Color(0xFF9E7B8A)),
+                              const Icon(
+                                Icons.chevron_right,
+                                color: Color(0xFF9E7B8A),
+                              ),
                             ],
                           ),
                         ),
@@ -261,16 +299,23 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const CreateRoomScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const CreateRoomScreen(),
+                ),
               );
             },
             icon: const Icon(Icons.add),
-            label: const Text('部屋を作成', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: const Text(
+              '部屋を作成',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         );
       },
       loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Color(0xFFE91E8C))),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFFE91E8C)),
+        ),
       ),
       error: (error, stack) {
         debugPrint('部屋一覧取得エラー: $error');
@@ -288,7 +333,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
   }
 }
 
-// RPGセリフウィンドウ風ウェルカムダイアログ
 class _WelcomeDialog extends StatefulWidget {
   final VoidCallback onFinished;
   const _WelcomeDialog({required this.onFinished});
@@ -305,6 +349,7 @@ class _WelcomeDialogState extends State<_WelcomeDialog> {
   ];
   int _index = 0;
 
+  //次のセリフに進む(最後なら完了コールバックを呼ぶ)関数
   void _next() {
     if (_index < _messages.length - 1) {
       setState(() => _index++);
@@ -313,6 +358,7 @@ class _WelcomeDialogState extends State<_WelcomeDialog> {
     }
   }
 
+  //ウェルカムダイアログのUIを構築する関数
   @override
   Widget build(BuildContext context) {
     final isLast = _index == _messages.length - 1;
@@ -346,7 +392,10 @@ class _WelcomeDialogState extends State<_WelcomeDialog> {
                 children: [
                   // 名前プレート
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 7,
+                    ),
                     decoration: const BoxDecoration(
                       color: Color(0xFFE91E8C),
                       borderRadius: BorderRadius.only(
@@ -381,17 +430,20 @@ class _WelcomeDialogState extends State<_WelcomeDialog> {
                         Row(
                           children: [
                             // ページドット
-                            ...List.generate(_messages.length, (i) => Container(
-                              margin: const EdgeInsets.only(right: 5),
-                              width: 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: i == _index
-                                    ? const Color(0xFFE91E8C)
-                                    : const Color(0xFFFFCDD2),
-                                borderRadius: BorderRadius.circular(1),
+                            ...List.generate(
+                              _messages.length,
+                              (i) => Container(
+                                margin: const EdgeInsets.only(right: 5),
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: i == _index
+                                      ? const Color(0xFFE91E8C)
+                                      : const Color(0xFFFFCDD2),
+                                  borderRadius: BorderRadius.circular(1),
+                                ),
                               ),
-                            )),
+                            ),
                             const Spacer(),
                             Text(
                               isLast ? '▶ はじめる！' : '▼ タップして続ける',

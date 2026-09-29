@@ -13,12 +13,14 @@ class CreateRoomScreen extends ConsumerStatefulWidget {
 class _CreateRoomScreenState extends ConsumerState<CreateRoomScreen> {
   final _roomNameController = TextEditingController();
 
+  //画面破棄時にコントローラーを解放する関数
   @override
   void dispose() {
     _roomNameController.dispose();
     super.dispose();
   }
 
+  //ルームを新規作成する関数
   Future<void> _createRoom() async {
     final roomName = _roomNameController.text.trim();
     if (roomName.isEmpty) return;
@@ -28,13 +30,14 @@ class _CreateRoomScreenState extends ConsumerState<CreateRoomScreen> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('部屋の作成に失敗しました: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('部屋の作成に失敗しました: $e')));
       }
     }
   }
 
+  //ルーム作成画面のUIを構築する関数
   @override
   Widget build(BuildContext context) {
     return Scaffold(

@@ -1,5 +1,8 @@
+//1ゲームで出題する問題数
+const kQuestionsPerGame = 5;
+
 const List<Map<String, dynamic>> kQuestions = [
-  // 🍽️ 食べ物カテゴリ
+  // 食べ物カテゴリ
   {
     'category': '食べ物',
     'question': '好きな食べ物は？',
@@ -101,7 +104,7 @@ const List<Map<String, dynamic>> kQuestions = [
     'choices': ['甘党', '塩党', 'どちらも好き', 'どちらも苦手'],
   },
 
-  // 🎮 趣味・娯楽カテゴリ
+  // 趣味・娯楽カテゴリ
   {
     'category': '趣味',
     'question': '休日の過ごし方は？',
@@ -203,7 +206,7 @@ const List<Map<String, dynamic>> kQuestions = [
     'choices': ['車', '電車', '自転車', 'バイク'],
   },
 
-  // 💡 価値観カテゴリ
+  // 価値観カテゴリ
   {
     'category': '価値観',
     'question': '朝型・夜型どっち？',
@@ -305,7 +308,7 @@ const List<Map<String, dynamic>> kQuestions = [
     'choices': ['絶対守る', 'できるだけ守る', '状況による', 'ゆるめ'],
   },
 
-  // 🌆 日常カテゴリ
+  // 日常カテゴリ
   {
     'category': '日常',
     'question': 'SNSをよく使う？',
@@ -407,7 +410,7 @@ const List<Map<String, dynamic>> kQuestions = [
     'choices': ['月曜', '金曜', '土曜', '日曜'],
   },
 
-  // 🌈 もしもカテゴリ
+  // もしもカテゴリ
   {
     'category': 'もしも',
     'question': '好きな季節は？',

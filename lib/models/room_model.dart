@@ -1,26 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// [RoomModel] は Cloud Firestore におけるチャットルームドキュメントを表し、その中で行われるゲームのアクティブな状態を含みます。
-///
-/// ルーム詳細とゲームの状態を専用のモデルにカプセル化することで、UI や状態コントローラが
-/// Firestore の Map 構造に直接依存することなくルームを操作できるようにします。
+import '../data/questions.dart';
+
+// Firestoreの rooms ドキュメントに対応するモデル
 class RoomModel {
-  /// このルームの Firestore ドキュメント ID。
   final String id;
-  
-  /// ルームの表示名。
   final String name;
-
-  /// ルームが作成された日時。
   final DateTime? createdAt;
-
-  /// ルームを作成したユーザーの Firebase Authentication UID。
   final String createdBy;
-
-  /// 現在このルームに参加しているメンバーの UID リスト。
   final List<String> members;
-
-  /// このルームに関連付けられたゲームの現在の状態。
   final GameState gameState;
 
   const RoomModel({
@@ -32,9 +20,7 @@ class RoomModel {
     required this.gameState,
   });
 
-  /// Firestore の [DocumentSnapshot] から [RoomModel] を生成するファクトリコンストラクタ。
-  ///
-  /// このコンストラクタはバリデーションを行い、型安全性を確保します。
+  //FirestoreのドキュメントからRoomModelを作る関数
   factory RoomModel.fromDocument(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>?;
     if (data == null) {
@@ -51,15 +37,19 @@ class RoomModel {
       createdAt: timestamp?.toDate(),
       createdBy: data['createdBy'] as String? ?? '',
       members: membersList,
-      gameState: GameState.fromMap(data['gameState'] as Map<String, dynamic>? ?? {}),
+      gameState: GameState.fromMap(
+        data['gameState'] as Map<String, dynamic>? ?? {},
+      ),
     );
   }
 
-  /// データベースへの書き込み用に、[RoomModel] を Map 表現に逆変換します。
+  //Firestore書き込み用のMapに変換する関数
   Map<String, dynamic> toMap() {
     return {
       'name': name,
-      'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
+      'createdAt': createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp(),
       'createdBy': createdBy,
       'members': members,
       'gameState': gameState.toMap(),
@@ -67,49 +57,31 @@ class RoomModel {
   }
 }
 
-/// [GameState] はルーム内における「ボムゲーム（爆弾ゲーム）」の現在の進行状況を表します。
-/// [GameState] はルーム内における共通点探しゲームの現在の進行状況を表します。
+// ルーム内で行われる共通点探しゲームの進行状況
 class GameState {
-  /// ゲームのステータス
-  /// 'waiting'（待機中）/ 'playing'（ゲーム中）/ 'result'（結果発表）
+  // 'waiting' / 'playing' / 'result'
   final String status;
 
-  /// 現在何問目か（0〜4）
+  // 現在何問目か(0〜4)
   final int currentQuestion;
-
-  /// 全部で何問か（5固定）
   final int totalQuestions;
 
-  /// 各ユーザーの回答を記録するMap
-  /// キー：uid　値：選択肢のインデックス（0〜3）
-  /// 全員が回答したら次の問題へ進む
+  // キー:uid、値:選択した選択肢のインデックス
   final Map<String, int> answers;
 
-  /// ユーザー間のマッチングスコアを記録するMap
-  /// キー：'uid001_uid002'　値：一致した回数
+  // キー:'uid1_uid2'(ソート済み)、値:回答が一致した回数
   final Map<String, int> scores;
 
-  /// 今チャット画面を開いているメンバーのUIDリスト
-  /// ゲームの参加者はこのリストを使う
+  // 現在チャット画面を開いているメンバーのUID(ゲーム参加者)
   final List<String> activeMembers;
 
-  /// 結果画面を閉じたメンバーのUIDリスト
-  /// 全員が閉じたらendGame()を呼ぶ
+  // 結果画面を閉じたメンバーのUID。全員分揃うとendGame()が呼ばれる
   final List<String> closedMembers;
 
-  /// 各問題の回答履歴
-  /// ゲーム終了後も確認できるように保存する
-  /// 各要素の構造：
-  /// {
-  ///   'question': 'お題のテキスト',
-  ///   'choices':  ['選択肢1', '選択肢2', '選択肢3', '選択肢4'],
-  ///   'answers':  {'uid001': 0, 'uid002': 2, ...}
-  /// }
+  // 各問題の回答履歴: {'question', 'choices', 'answers': {uid: index}}
   final List<Map<String, dynamic>> rounds;
 
-  /// startGame時にランダム選択された問題インデックスの一覧
-  /// kQuestions（25問）の中から5問分のインデックスが入る
-  /// 例: [3, 12, 7, 21, 18]
+  // startGame時にkQuestionsからランダム選択した問題インデックス
   final List<int> questionIndices;
 
   const GameState({
@@ -124,63 +96,53 @@ class GameState {
     this.questionIndices = const [],
   });
 
-  /// Firestoreから取得したMapからGameStateを生成するファクトリコンストラクタ
+  //FirestoreのMapからGameStateを作る関数
   factory GameState.fromMap(Map<String, dynamic> map) {
-    // activeMembers: List<dynamic> → List<String>に変換
     final activeRaw = map['activeMembers'] as List<dynamic>? ?? [];
     final activeList = activeRaw.map((e) => e.toString()).toList();
 
-    // closedMembers: List<dynamic> → List<String>に変換
     final closedRaw = map['closedMembers'] as List<dynamic>? ?? [];
     final closedList = closedRaw.map((e) => e.toString()).toList();
 
-    // answers: Map<String, dynamic> → Map<String, int>に変換
     final answersRaw = map['answers'] as Map<String, dynamic>? ?? {};
-    final answers = answersRaw.map(
-      (key, value) => MapEntry(key, value as int),
-    );
+    final answers = answersRaw.map((key, value) => MapEntry(key, value as int));
 
-    // scores: Map<String, dynamic> → Map<String, int>に変換
     final scoresRaw = map['scores'] as Map<String, dynamic>? ?? {};
-    final scores = scoresRaw.map(
-      (key, value) => MapEntry(key, value as int),
-    );
+    final scores = scoresRaw.map((key, value) => MapEntry(key, value as int));
 
-    // rounds: List<dynamic> → List<Map<String, dynamic>>に変換
     final roundsList = (map['rounds'] as List<dynamic>? ?? [])
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
 
-    // questionIndices: List<dynamic> → List<int>に変換
     final questionIndicesList = (map['questionIndices'] as List<dynamic>? ?? [])
         .map((e) => e as int)
         .toList();
 
     return GameState(
-      status:           map['status']          as String? ?? 'waiting',
-      currentQuestion:  map['currentQuestion'] as int?    ?? 0,
-      totalQuestions:   map['totalQuestions']  as int?    ?? 5,
-      answers:          answers,
-      scores:           scores,
-      activeMembers:    activeList,
-      closedMembers:    closedList,
-      rounds:           roundsList,
-      questionIndices:  questionIndicesList,
+      status: map['status'] as String? ?? 'waiting',
+      currentQuestion: map['currentQuestion'] as int? ?? 0,
+      totalQuestions: map['totalQuestions'] as int? ?? kQuestionsPerGame,
+      answers: answers,
+      scores: scores,
+      activeMembers: activeList,
+      closedMembers: closedList,
+      rounds: roundsList,
+      questionIndices: questionIndicesList,
     );
   }
 
-  /// GameStateをFirestore書き込み用のMapに変換する
+  //Firestore書き込み用のMapに変換する関数
   Map<String, dynamic> toMap() {
     return {
-      'status':           status,
-      'currentQuestion':  currentQuestion,
-      'totalQuestions':   totalQuestions,
-      'answers':          answers,
-      'scores':           scores,
-      'activeMembers':    activeMembers,
-      'closedMembers':    closedMembers,
-      'rounds':           rounds,
-      'questionIndices':  questionIndices,
+      'status': status,
+      'currentQuestion': currentQuestion,
+      'totalQuestions': totalQuestions,
+      'answers': answers,
+      'scores': scores,
+      'activeMembers': activeMembers,
+      'closedMembers': closedMembers,
+      'rounds': rounds,
+      'questionIndices': questionIndices,
     };
   }
 }

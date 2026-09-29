@@ -1,4 +1,4 @@
-import 'package:bomb_chat/utils/auth_error_message.dart';
+import 'package:pita_room/utils/auth_error_message.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +20,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _passwordVisible = false;
   bool _confirmVisible = false;
 
+  //画面破棄時にコントローラーを解放する関数
   @override
   void dispose() {
     _emailController.dispose();
@@ -28,11 +29,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.dispose();
   }
 
+  //新規登録処理を行う関数
   Future<void> _register() async {
     if (_passwordController.text != _confirmController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('パスワードが一致しません')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('パスワードが一致しません')));
       return;
     }
 
@@ -40,23 +42,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await ref.read(authNotifierProvider.notifier).register(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
+      await ref
+          .read(authNotifierProvider.notifier)
+          .register(
+            _emailController.text.trim(),
+            _passwordController.text.trim(),
+          );
       if (mounted) Navigator.of(context).pop();
     } on FirebaseAuthException catch (e) {
       final message = authErrorMessage(e.code);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  //新規登録画面のUIを構築する関数
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -87,8 +92,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 labelText: 'パスワード',
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
-                  icon: Icon(_passwordVisible ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
+                  icon: Icon(
+                    _passwordVisible ? Icons.visibility_off : Icons.visibility,
+                  ),
+                  onPressed: () =>
+                      setState(() => _passwordVisible = !_passwordVisible),
                 ),
               ),
               obscureText: !_passwordVisible,
@@ -100,8 +108,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 labelText: 'パスワード（確認）',
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
-                  icon: Icon(_confirmVisible ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _confirmVisible = !_confirmVisible),
+                  icon: Icon(
+                    _confirmVisible ? Icons.visibility_off : Icons.visibility,
+                  ),
+                  onPressed: () =>
+                      setState(() => _confirmVisible = !_confirmVisible),
                 ),
               ),
               obscureText: !_confirmVisible,

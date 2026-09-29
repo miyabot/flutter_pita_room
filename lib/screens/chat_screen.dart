@@ -5,15 +5,23 @@ import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../providers.dart';
 import '../data/questions.dart';
+import '../models/message_model.dart';
+import '../models/room_model.dart';
+import '../utils/constants.dart';
 import 'invite_screen.dart';
+
+//カードの展開/折りたたみアニメーションの長さ
+const _kExpandAnimationDuration = Duration(milliseconds: 200);
+
+//マッチング率の評価に使う閾値
+const _kGreatMatchPercent = 80;
+const _kGoodMatchPercent = 60;
+const _kOkMatchPercent = 40;
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String roomId;
 
-  const ChatScreen({
-    super.key,
-    required this.roomId,
-  });
+  const ChatScreen({super.key, required this.roomId});
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -33,6 +41,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _chatRoomDone = false;
   bool _tutorialLoaded = false;
 
+  //画面初期化時にチュートリアル状態読み込みと在室登録を行う関数
   @override
   void initState() {
     super.initState();
@@ -47,6 +56,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
+  //画面破棄時にコントローラーの解放と在室解除を行う関数
   @override
   void dispose() {
     _messageController.dispose();
@@ -56,15 +66,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.dispose();
   }
 
+  //チュートリアルを表示済みかFirestoreから取得する関数
   Future<void> _loadTutorialStatus() async {
     final uid = ref.read(authProvider).currentUser?.uid;
     if (uid == null) return;
-    final query = await ref.read(firestoreProvider)
+    final query = await ref
+        .read(firestoreProvider)
         .collection('users')
         .where('uid', isEqualTo: uid)
         .get();
     if (!mounted) return;
-    final tutorialMap = query.docs.isEmpty ? null : query.docs.first.data()['tutorial'];
+    final tutorialMap = query.docs.isEmpty
+        ? null
+        : query.docs.first.data()['tutorial'];
     setState(() {
       if (tutorialMap is Map) {
         _chatRoomDone = tutorialMap['chatRoom'] == true;
@@ -73,12 +87,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
+  //ゲーム開始ボタンとメニューを説明するコーチマークを表示する関数
   void _showChatCoachMark() {
     TutorialCoachMark(
       onFinish: () async {
         final uid = ref.read(authProvider).currentUser?.uid;
         if (uid == null) return;
-        final query = await ref.read(firestoreProvider)
+        final query = await ref
+            .read(firestoreProvider)
             .collection('users')
             .where('uid', isEqualTo: uid)
             .get();
@@ -105,7 +121,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       color: Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      shadows: [Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 4)],
+                      shadows: [
+                        Shadow(
+                          color: Colors.black54,
+                          offset: Offset(1, 1),
+                          blurRadius: 4,
+                        ),
+                      ],
                     ),
                   ),
                   SizedBox(height: 8),
@@ -114,7 +136,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     style: TextStyle(
                       color: Color(0xFFFFCDD2),
                       fontSize: 14,
-                      shadows: [Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 4)],
+                      shadows: [
+                        Shadow(
+                          color: Colors.black54,
+                          offset: Offset(1, 1),
+                          blurRadius: 4,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -141,7 +169,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       color: Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      shadows: [Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 4)],
+                      shadows: [
+                        Shadow(
+                          color: Colors.black54,
+                          offset: Offset(1, 1),
+                          blurRadius: 4,
+                        ),
+                      ],
                     ),
                   ),
                   SizedBox(height: 8),
@@ -150,7 +184,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     style: TextStyle(
                       color: Color(0xFFFFCDD2),
                       fontSize: 14,
-                      shadows: [Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 4)],
+                      shadows: [
+                        Shadow(
+                          color: Colors.black54,
+                          offset: Offset(1, 1),
+                          blurRadius: 4,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -165,21 +205,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       onSkip: () {
         final uid = ref.read(authProvider).currentUser?.uid;
         if (uid != null) {
-          ref.read(firestoreProvider)
+          ref
+              .read(firestoreProvider)
               .collection('users')
               .where('uid', isEqualTo: uid)
               .get()
               .then((query) {
-            if (query.docs.isNotEmpty) {
-              query.docs.first.reference.update({'tutorial.chatRoom': true});
-            }
-          });
+                if (query.docs.isNotEmpty) {
+                  query.docs.first.reference.update({
+                    'tutorial.chatRoom': true,
+                  });
+                }
+              });
         }
         return true;
       },
     ).show(context: context);
   }
 
+  //メッセージ送信関数
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
@@ -190,382 +234,360 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _messageController.clear();
 
     try {
-      await ref.read(firestoreProvider)
+      await ref
+          .read(firestoreProvider)
           .collection('rooms')
           .doc(widget.roomId)
           .collection('messages')
           .add({
-        'text': text,
-        'uid': user.uid,
-        'email': user.email,
-        'type': 'chat',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+            'text': text,
+            'uid': user.uid,
+            'email': user.email,
+            'type': 'chat',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('メッセージの送信に失敗しました: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('メッセージの送信に失敗しました: $e')));
       }
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final messageState = ref.watch(messagesProvider(widget.roomId));
-    final roomState    = ref.watch(currentRoomStateProvider(widget.roomId));
-    // gameState.activeMembers（Firestore）ではなく RTDB のプレゼンスを参照する
-    // タスクキル時も onDisconnect で自動削除されるため常に正確な値になる
-    final activeMembers = ref.watch(activeMembersProvider(widget.roomId)).value ?? [];
+  //AppBarのメニュー選択(招待/名前変更/退会/ログアウト)を処理する関数
+  Future<void> _handleMenuAction(String value) async {
+    switch (value) {
+      case 'invite':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => InviteScreen(roomId: widget.roomId),
+          ),
+        );
+        break;
 
-    return roomState.when(
-      data: (room) {
-        final gameState = room.gameState;
-        final rawStatus = gameState.status;
-        final currentUid = ref.read(authProvider).currentUser?.uid;
+      case 'rename':
+        String roomName = '';
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('ルーム名の変更'),
+            content: TextField(
+              decoration: const InputDecoration(labelText: '新しいルーム名'),
+              autofocus: true,
+              onChanged: (value) => roomName = value,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('キャンセル'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('変更'),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true) break;
+        if (!context.mounted) break;
+        await ref
+            .read(roomNotifierProvider.notifier)
+            .renameRoom(widget.roomId, roomName);
+        break;
 
-        final closedMembers = gameState.closedMembers;
-        final hasClosedResult = closedMembers.contains(currentUid);
-        final status = (rawStatus == 'result' && hasClosedResult) ? 'waiting' : rawStatus;
-
-        if (!_chatTutorialShown && status == 'waiting' && !_chatRoomDone && _tutorialLoaded) {
-          _chatTutorialShown = true;
-          _chatRoomDone = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) async {
-            await Future.delayed(const Duration(milliseconds: 400));
-            if (mounted) _showChatCoachMark();
-          });
+      case 'leave':
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('ルームを退会'),
+            content: const Text('このルームから退会しますか？'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('キャンセル'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('退会する'),
+              ),
+            ],
+          ),
+        );
+        if (confirm != true) return;
+        if (!context.mounted) return;
+        await ref.read(roomNotifierProvider.notifier).leaveRoom(widget.roomId);
+        if (context.mounted) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
         }
+        break;
 
-        return SafeArea(
-          child: Scaffold(
-            appBar: AppBar(
-              title: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+      case 'logout':
+        await ref.read(authProvider).signOut();
+        if (context.mounted) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
+        break;
+    }
+  }
+
+  //画面上部のAppBarを構築する関数
+  AppBar _buildAppBar(
+    RoomModel room,
+    String status,
+    List<String> activeMembers,
+  ) {
+    return AppBar(
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            room.name,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.circle, size: 7, color: Color(0xFF4CAF50)),
+              const SizedBox(width: 4),
+              Text(
+                '${activeMembers.length}人 オンライン',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF9E7B8A),
+                  fontWeight: FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        if (status == 'waiting')
+          IconButton(
+            key: _gameButtonKey,
+            icon: const Icon(Icons.sports_esports),
+            tooltip: 'ゲーム開始',
+            onPressed: () {
+              if (activeMembers.length < kMinPlayersToStart) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('ゲームは$kMinPlayersToStart人以上で開始できます'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+                return;
+              }
+              ref
+                  .read(gameNotifierProvider.notifier)
+                  .startGame(widget.roomId, activeMembers);
+            },
+          )
+        else
+          IconButton(
+            icon: const Icon(Icons.pause_circle_outline),
+            tooltip: 'ゲームを強制終了',
+            onPressed: () {
+              ref.read(gameNotifierProvider.notifier).endGame(widget.roomId);
+            },
+          ),
+        PopupMenuButton<String>(
+          key: _menuKey,
+          icon: const Icon(Icons.more_vert),
+          onSelected: _handleMenuAction,
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'invite',
+              child: Row(
                 children: [
-                  Text(
-                    room.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.circle, size: 7, color: Color(0xFF4CAF50)),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${activeMembers.length}人 オンライン',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF9E7B8A),
-                          fontWeight: FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
+                  Icon(Icons.person_add),
+                  SizedBox(width: 8),
+                  Text('ユーザーを招待'),
                 ],
               ),
-              actions: [
-                if (status == 'waiting')
-                  IconButton(
-                    key: _gameButtonKey,
-                    icon: const Icon(Icons.sports_esports),
-                    tooltip: 'ゲーム開始',
-                    onPressed: () {
-                      if (activeMembers.length < 2) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('ゲームは2人以上で開始できます'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                        return;
-                      }
-                      ref.read(gameNotifierProvider.notifier).startGame(
-                        widget.roomId,
-                        activeMembers,
-                      );
-                    },
-                  )
-                else
-                  IconButton(
-                    icon: const Icon(Icons.pause_circle_outline),
-                    tooltip: 'ゲームを強制終了',
-                    onPressed: () {
-                      ref.read(gameNotifierProvider.notifier).endGame(
-                        widget.roomId,
-                      );
-                    },
-                  ),
-                PopupMenuButton<String>(
-                  key: _menuKey,
-                  icon: const Icon(Icons.more_vert),
-                  onSelected: (value) async {
-                    switch (value) {
-                      case 'invite':
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => InviteScreen(roomId: widget.roomId),
-                          ),
-                        );
-                        break;
-
-                      case 'rename':
-                        String roomName = '';
-                        final confirmed = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('ルーム名の変更'),
-                            content: TextField(
-                              decoration: const InputDecoration(
-                                labelText: '新しいルーム名',
-                              ),
-                              autofocus: true,
-                              onChanged: (value) => roomName = value,
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text('キャンセル'),
-                              ),
-                              ElevatedButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                child: const Text('変更'),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (confirmed != true) break;
-                        if (!context.mounted) break;
-                        await ref.read(roomNotifierProvider.notifier).renameRoom(widget.roomId, roomName);
-                        break;
-
-                      case 'leave':
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('ルームを退会'),
-                            content: const Text('このルームから退会しますか？'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text('キャンセル'),
-                              ),
-                              ElevatedButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                child: const Text('退会する'),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (confirm != true) return;
-                        if (!context.mounted) return;
-                        await ref.read(roomNotifierProvider.notifier)
-                            .leaveRoom(widget.roomId);
-                        if (context.mounted) {
-                          Navigator.of(context).popUntil((route) => route.isFirst);
-                        }
-                        break;
-                      case 'logout':
-                        await ref.read(authProvider).signOut();
-                        if (context.mounted) {
-                          Navigator.of(context).popUntil((route) => route.isFirst);
-                        }
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'invite',
-                      child: Row(
-                        children: [
-                          Icon(Icons.person_add),
-                          SizedBox(width: 8),
-                          Text('ユーザーを招待'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'rename',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit),
-                          SizedBox(width: 8),
-                          Text('ルーム名の変更'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'leave',
-                      child: Row(
-                        children: [
-                          Icon(Icons.exit_to_app),
-                          SizedBox(width: 8),
-                          Text('ルームを退会'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'logout',
-                      child: Row(
-                        children: [
-                          Icon(Icons.logout),
-                          SizedBox(width: 8),
-                          Text('ログアウト'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
             ),
-            body: Column(
-              children: [
-                // ─── 出題パネル ───
-                if (status == 'playing')
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFCE4EC),
-                      border: Border(
-                        bottom: BorderSide(color: Color(0xFFE91E8C), width: 2),
-                      ),
-                    ),
-                    // Builder でインデックス計算を行い、正しい問題データを取得する
-                    child: Builder(builder: (context) {
-                      // questionIndices = startGame時にランダム選択した問題番号の配列
-                      // currentQuestion = 今何問目か（0〜4）
-                      // actualIndex = kQuestionsの実際のインデックス
-                      final indices     = gameState.questionIndices;
-                      final q           = gameState.currentQuestion;
-                      final actualIndex = indices.isNotEmpty && q < indices.length
-                          ? indices[q]
-                          : q % kQuestions.length;
-                      final questionData = kQuestions[actualIndex];
+            const PopupMenuItem(
+              value: 'rename',
+              child: Row(
+                children: [
+                  Icon(Icons.edit),
+                  SizedBox(width: 8),
+                  Text('ルーム名の変更'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'leave',
+              child: Row(
+                children: [
+                  Icon(Icons.exit_to_app),
+                  SizedBox(width: 8),
+                  Text('ルームを退会'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'logout',
+              child: Row(
+                children: [
+                  Icon(Icons.logout),
+                  SizedBox(width: 8),
+                  Text('ログアウト'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // 進捗表示
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '${q + 1} / ${gameState.totalQuestions}問',
-                                style: const TextStyle(
-                                  color: Color(0xFFE91E8C),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              // 自分が回答済みか表示
-                              if (gameState.answers.containsKey(currentUid))
-                                const Text(
-                                  '✅ 回答済み',
-                                  style: TextStyle(color: Color(0xFF4CAF50), fontSize: 12),
-                                )
-                              else
-                                const Text(
-                                  '回答してください',
-                                  style: TextStyle(color: Color(0xFF9E7B8A), fontSize: 12),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
+  //ゲーム中の出題パネルを構築する関数
+  Widget _buildQuestionPanel(
+    GameState gameState,
+    String? currentUid,
+    List<String> activeMembers,
+  ) {
+    final indices = gameState.questionIndices;
+    final q = gameState.currentQuestion;
+    final actualIndex = indices.isNotEmpty && q < indices.length
+        ? indices[q]
+        : q % kQuestions.length;
+    final questionData = kQuestions[actualIndex];
 
-                          // お題テキスト
-                          Text(
-                            questionData['question'] as String,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: Color(0xFF2D1B33),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Color(0xFFFCE4EC),
+        border: Border(bottom: BorderSide(color: Color(0xFFE91E8C), width: 2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 進捗表示
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${q + 1} / ${gameState.totalQuestions}問',
+                style: const TextStyle(
+                  color: Color(0xFFE91E8C),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (gameState.answers.containsKey(currentUid))
+                const Text(
+                  '✅ 回答済み',
+                  style: TextStyle(color: Color(0xFF4CAF50), fontSize: 12),
+                )
+              else
+                const Text(
+                  '回答してください',
+                  style: TextStyle(color: Color(0xFF9E7B8A), fontSize: 12),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
 
-                          // 4択ボタン
-                          ...(questionData['choices'] as List)
-                              .asMap()
-                              .entries
-                              .map((entry) {
-                            final index      = entry.key;
-                            final choice     = entry.value as String;
-                            final hasAnswered = gameState.answers.containsKey(currentUid);
-                            final myAnswer   = gameState.answers[currentUid];
-                            final isSelected = myAnswer == index;
+          // お題テキスト
+          Text(
+            questionData['question'] as String,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: Color(0xFF2D1B33),
+            ),
+          ),
+          const SizedBox(height: 16),
 
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: ElevatedButton(
-                                onPressed: hasAnswered
-                                    ? null // 回答済みなら押せない
-                                    : () async {
-                                        if (currentUid == null) return;
-                                        await ref.read(gameNotifierProvider.notifier)
-                                            .submitAnswer(
-                                              widget.roomId,
-                                              currentUid,
-                                              index,
-                                              activeMembers,
-                                            );
-                                      },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: isSelected
-                                      ? const Color(0xFFE91E8C)
-                                      : const Color(0xFFF8BBD0),
-                                  foregroundColor: isSelected ? Colors.white : const Color(0xFF2D1B33),
-                                  side: BorderSide(
-                                    color: isSelected
-                                        ? const Color(0xFFAD1461)
-                                        : const Color(0xFFFFCDD2),
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: Text(choice),
-                              ),
+          // 4択ボタン
+          ...(questionData['choices'] as List).asMap().entries.map((entry) {
+            final index = entry.key;
+            final choice = entry.value as String;
+            final hasAnswered = gameState.answers.containsKey(currentUid);
+            final myAnswer = gameState.answers[currentUid];
+            final isSelected = myAnswer == index;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: ElevatedButton(
+                onPressed: hasAnswered
+                    ? null
+                    : () async {
+                        if (currentUid == null) return;
+                        await ref
+                            .read(gameNotifierProvider.notifier)
+                            .submitAnswer(
+                              widget.roomId,
+                              currentUid,
+                              index,
+                              activeMembers,
                             );
-                          }),
-
-                          const SizedBox(height: 8),
-
-                          // 何人が回答済みか表示
-                          Text(
-                            '${gameState.answers.length} / ${gameState.activeMembers.length}人が回答済み',
-                            style: const TextStyle(
-                              color: Color(0xFF9E7B8A),
-                              fontSize: 12,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      );
-                    }),
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isSelected
+                      ? const Color(0xFFE91E8C)
+                      : const Color(0xFFF8BBD0),
+                  foregroundColor: isSelected
+                      ? Colors.white
+                      : const Color(0xFF2D1B33),
+                  side: BorderSide(
+                    color: isSelected
+                        ? const Color(0xFFAD1461)
+                        : const Color(0xFFFFCDD2),
+                    width: 1.5,
                   ),
+                ),
+                child: Text(choice),
+              ),
+            );
+          }),
+          const SizedBox(height: 8),
 
-                // ─── チャット一覧 ───
-                if (status == 'waiting')
-                  Expanded(
-                    child: messageState.when(
-                      data: (messages) {
-                        return ListView.builder(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          itemCount: messages.length,
-                          itemBuilder: (context, index) {
-                            final message = messages[index];
-                            final isMe = message.uid == currentUid;
+          // 何人が回答済みか表示
+          Text(
+            '${gameState.answers.length} / ${gameState.activeMembers.length}人が回答済み',
+            style: const TextStyle(color: Color(0xFF9E7B8A), fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
 
-                            final nameAsync = ref.watch(userNameProvider(message.uid));
-                            final nameSnapshot = nameAsync.value;
-                            final name = (nameSnapshot == null || nameSnapshot.isEmpty) ? '' : nameSnapshot;
+  //チャットメッセージ一覧を構築する関数
+  Widget _buildChatList(
+    AsyncValue<List<MessageModel>> messageState,
+    String? currentUid,
+  ) {
+    return Expanded(
+      child: messageState.when(
+        data: (messages) {
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: messages.length,
+            itemBuilder: (context, index) {
+              final message = messages[index];
+              if (message.type == 'game_session') {
+                return _buildGameSessionCard(message);
+              }
+              return _buildChatBubble(context, message, currentUid);
+            },
+          );
+        },
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: Color(0xFFE91E8C)),
+        ),
+        error: (error, stack) => Center(child: Text('メッセージ取得エラー: $error')),
+      ),
+    );
+  }
 
-                            final avatarUrl = ref.watch(userAvatarProvider(message.uid)).value ?? '';
-
-                            if (message.type == 'game_session') {
+  //過去のゲーム結果を表示する折りたたみカードを構築する関数
+  Widget _buildGameSessionCard(MessageModel message) {
     final isExpanded = _expandedAnswers.contains(message.id);
     final rounds = message.rounds;
     final scores = message.scores;
@@ -616,7 +638,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   const Spacer(),
                   AnimatedRotation(
                     turns: isExpanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
+                    duration: _kExpandAnimationDuration,
                     child: const Icon(
                       Icons.keyboard_arrow_down,
                       color: Color(0xFFE91E8C),
@@ -626,146 +648,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ],
               ),
             ),
-            // 展開時
+            // 展開時のみ詳細を表示
             AnimatedSize(
-              duration: const Duration(milliseconds: 200),
+              duration: _kExpandAnimationDuration,
               curve: Curves.easeInOut,
               child: isExpanded
-                  ? Column(
-                      children: [
-                        const Divider(color: Color(0xFFFFCDD2), height: 1),
-                        // マッチング結果
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'マッチング結果',
-                                style: TextStyle(
-                                  color: Color(0xFFE91E8C),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              ...scores.entries.map((entry) {
-                                final keys    = entry.key.split('_');
-                                final uid1    = keys[0];
-                                final uid2    = keys[1];
-                                final score   = entry.value;
-                                final total   = rounds.length;
-                                final percent = total > 0
-                                    ? (score / total * 100).round()
-                                    : 0;
-                                final name1 = ref.watch(userNameProvider(uid1)).value ?? '...';
-                                final name2 = ref.watch(userNameProvider(uid2)).value ?? '...';
-
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 4),
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        '$name1 × $name2',
-                                        style: const TextStyle(
-                                          color: Color(0xFF2D1B33),
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      Text(
-                                        '$percent%',
-                                        style: TextStyle(
-                                          color: percent >= 60
-                                              ? const Color(0xFF4CAF50)
-                                              : const Color(0xFF9E7B8A),
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }),
-                            ],
-                          ),
-                        ),
-                        const Divider(color: Color(0xFFFFCDD2), height: 1),
-                        // 各問の回答
-                        ...rounds.asMap().entries.map((entry) {
-                          final i       = entry.key;
-                          final round   = entry.value;
-                          final question = round['question'] as String? ?? '';
-                          final choices  = round['choices']  as List<dynamic>? ?? [];
-                          final answers  = round['answers']  as Map<String, dynamic>? ?? {};
-                          final isLast   = i == rounds.length - 1;
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: EdgeInsets.fromLTRB(14, 10, 14, isLast ? 14 : 6),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      question,
-                                      style: const TextStyle(
-                                        color: Color(0xFFE91E8C),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    ...answers.entries.map((answer) {
-                                      final uid         = answer.key;
-                                      final choiceIndex = answer.value as int;
-                                      final choiceText  = choiceIndex < choices.length
-                                          ? choices[choiceIndex] as String
-                                          : '?';
-                                      final userName = ref.watch(userNameProvider(uid)).value ?? '...';
-
-                                      return Padding(
-                                        padding: const EdgeInsets.only(bottom: 4),
-                                        child: Row(
-                                          children: [
-                                            Text(
-                                              userName,
-                                              style: const TextStyle(
-                                                color: Color(0xFF2D1B33),
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                            const Text('：',
-                                              style: TextStyle(color: Color(0xFF9E7B8A)),
-                                            ),
-                                            Text(
-                                              choiceText,
-                                              style: const TextStyle(
-                                                color: Color(0xFF2D1B33),
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }),
-                                  ],
-                                ),
-                              ),
-                              if (!isLast)
-                                const Divider(
-                                  color: Color(0xFFFFCDD2),
-                                  height: 1,
-                                  indent: 14,
-                                  endIndent: 14,
-                                ),
-                            ],
-                          );
-                        }),
-                      ],
-                    )
+                  ? _buildGameSessionDetails(rounds, scores)
                   : const SizedBox.shrink(),
             ),
           ],
@@ -774,317 +662,521 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-                            // 通常チャット
-                            return Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Row(
-                                mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children:[ 
-                                  if(!isMe)...[
-                                    CircleAvatar(
-                                      radius: 16,
-                                      backgroundColor: const Color(0xFFFCE4EC),
-                                      backgroundImage: avatarUrl.isNotEmpty
-                                          ? NetworkImage(avatarUrl)
-                                          : null,
-                                      child: avatarUrl.isEmpty
-                                          ? const Icon(Icons.person, size: 16, color: Color(0xFF9E7B8A))
-                                          : null,
-                                    ),
-                                    const SizedBox(width: 8),
-                                  ],
-                                  Column(
-                                  crossAxisAlignment: isMe
-                                      ? CrossAxisAlignment.end
-                                      : CrossAxisAlignment.start,
-                                  children: [
-                                    if (!isMe && name.isNotEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(left: 4, bottom: 2),
-                                        child: Text(
-                                          name,
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            color: Color(0xFF9E7B8A),
-                                          ),
-                                        ),
-                                      ),
-                                    Container(
-                                      constraints: BoxConstraints(
-                                        maxWidth: MediaQuery.of(context).size.width * 0.65,
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 10,
-                                        horizontal: 16,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: isMe
-                                            ? const Color(0xFFE91E8C)
-                                            : const Color(0xFFF8BBD0),
-                                        borderRadius: BorderRadius.only(
-                                          topLeft: const Radius.circular(4),
-                                          topRight: const Radius.circular(4),
-                                          bottomLeft: Radius.circular(isMe ? 4 : 0),
-                                          bottomRight: Radius.circular(isMe ? 0 : 4),
-                                        ),
-                                        border: Border.all(
-                                          color: isMe
-                                              ? const Color(0xFFAD1461)
-                                              : const Color(0xFFFFCDD2),
-                                          width: 1.5,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        message.text,
-                                        style: TextStyle(
-                                          color: isMe ? Colors.white : const Color(0xFF2D1B33),
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                ]
-                              ),
-                            );
-                          },
-                        );
-                      },
-                      loading: () => const Center(
-                        child: CircularProgressIndicator(color: Color(0xFFE91E8C)),
-                      ),
-                      error: (error, stack) => Center(
-                        child: Text('メッセージ取得エラー: $error'),
-                      ),
-                    ),
-                  ),
+  //ゲーム結果カードを開いた時の詳細(マッチング結果・各問の回答)を構築する関数
+  Widget _buildGameSessionDetails(
+    List<Map<String, dynamic>> rounds,
+    Map<String, int> scores,
+  ) {
+    return Column(
+      children: [
+        const Divider(color: Color(0xFFFFCDD2), height: 1),
 
-                if (status == 'result')
-                  Builder(builder: (context) {
-                    // 自分以外の全員とのマッチング率を計算する
-                    final matchResults = gameState.activeMembers
-                        .where((uid) => uid != currentUid)
-                        .map((uid) {
-                      final sortedUids = [currentUid!, uid]..sort();
-                      final key = '${sortedUids[0]}_${sortedUids[1]}';
-                      final score = gameState.scores[key] ?? 0;
-                      final total = gameState.totalQuestions;
-                      final percent = (score / total * 100).round();
-                      return MapEntry(uid, percent);
-                    }).toList();
+        // マッチング結果
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'マッチング結果',
+                style: TextStyle(
+                  color: Color(0xFFE91E8C),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 6),
+              ...scores.entries.map((entry) {
+                final keys = entry.key.split('_');
+                final uid1 = keys[0];
+                final uid2 = keys[1];
+                final score = entry.value;
+                final total = rounds.length;
+                final percent = total > 0 ? (score / total * 100).round() : 0;
+                final name1 = ref.watch(userNameProvider(uid1)).value ?? '...';
+                final name2 = ref.watch(userNameProvider(uid2)).value ?? '...';
 
-                    // 一番マッチング率が高い相手を採用する
-                    final topMatch = matchResults.isEmpty
-                        ? null
-                        : matchResults.reduce((a, b) => a.value >= b.value ? a : b);
-                    final topPercent = topMatch?.value ?? 0;
-                    final topName = topMatch == null
-                        ? ''
-                        : (ref.watch(userNameProvider(topMatch.key)).value ?? '...');
-
-                    // 一番マッチング率が高い相手に応じてフェアリーのコメントを変える
-                    final String fairyComment;
-                    if (topMatch == null) {
-                      fairyComment = '結果が出たよ！';
-                    } else if (topPercent >= 80) {
-                      fairyComment = '$topNameさんとは$topPercent%！\nすごくぴったりだね！';
-                    } else if (topPercent >= 60) {
-                      fairyComment = '$topNameさんとは$topPercent%！\nなかなかいい感じだね！';
-                    } else if (topPercent >= 40) {
-                      fairyComment = '$topNameさんとは$topPercent%！\nまあまあの結果だね！';
-                    } else {
-                      fairyComment = '$topNameさんとは$topPercent%！\n個性が出た結果だね！';
-                    }
-
-                    return Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFCE4EC),
-                        border: Border(
-                          bottom: BorderSide(color: Color(0xFFE91E8C), width: 2),
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      Text(
+                        '$name1 × $name2',
+                        style: const TextStyle(
+                          color: Color(0xFF2D1B33),
+                          fontSize: 12,
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text(
-                            '🎉 結果発表！',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF2D1B33),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 12),
+                      const Spacer(),
+                      Text(
+                        '$percent%',
+                        style: TextStyle(
+                          color: percent >= _kGoodMatchPercent
+                              ? const Color(0xFF4CAF50)
+                              : const Color(0xFF9E7B8A),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+        const Divider(color: Color(0xFFFFCDD2), height: 1),
 
-                          // フェアリーのセリフウィンドウ
-                          Image.asset('assets/images/fairy.png', height: 96),
-                          const SizedBox(height: 4),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: const Color(0xFFE91E8C), width: 2),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x33E91E8C),
-                                  offset: Offset(3, 3),
-                                  blurRadius: 0,
-                                ),
-                              ],
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                            child: Text(
-                              fairyComment,
-                              textAlign: TextAlign.center,
+        // 各問の回答
+        ...rounds.asMap().entries.map((entry) {
+          final i = entry.key;
+          final round = entry.value;
+          final question = round['question'] as String? ?? '';
+          final choices = round['choices'] as List<dynamic>? ?? [];
+          final answers = round['answers'] as Map<String, dynamic>? ?? {};
+          final isLast = i == rounds.length - 1;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(14, 10, 14, isLast ? 14 : 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      question,
+                      style: const TextStyle(
+                        color: Color(0xFFE91E8C),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    ...answers.entries.map((answer) {
+                      final uid = answer.key;
+                      final choiceIndex = answer.value as int;
+                      final choiceText = choiceIndex < choices.length
+                          ? choices[choiceIndex] as String
+                          : '?';
+                      final userName =
+                          ref.watch(userNameProvider(uid)).value ?? '...';
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            Text(
+                              userName,
                               style: const TextStyle(
-                                fontSize: 13,
                                 color: Color(0xFF2D1B33),
-                                height: 1.6,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // 全員とのマッチング率を表示
-                          ...gameState.activeMembers
-                              .where((uid) => uid != currentUid)
-                              .map((uid) {
-                            final sortedUids = [currentUid!, uid]..sort();
-                            final key = '${sortedUids[0]}_${sortedUids[1]}';
-
-                            final score = gameState.scores[key] ?? 0;
-                            final total = gameState.totalQuestions;
-                            final percent = (score / total * 100).round();
-
-                            final nameAsync = ref.watch(userNameProvider(uid));
-                            final name = nameAsync.value ?? '...';
-
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        name,
-                                        style: const TextStyle(
-                                          color: Color(0xFF2D1B33),
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      Text(
-                                        '$percent%',
-                                        style: TextStyle(
-                                          color: percent >= 60
-                                              ? const Color(0xFF4CAF50)
-                                              : const Color(0xFF9E7B8A),
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  // プログレスバー
-                                  LinearProgressIndicator(
-                                    value: percent / 100,
-                                    backgroundColor: const Color(0xFFF8BBD0),
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      percent >= 60
-                                          ? const Color(0xFF4CAF50)
-                                          : const Color(0xFFE91E8C),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }),
-
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              if (currentUid == null) return;
-                              ref.read(gameNotifierProvider.notifier)
-                                  .closeResult(widget.roomId, currentUid, gameState.activeMembers);
-                            },
-                            child: const Text('結果を閉じる'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-
-                // ─── メッセージ入力バー ───
-                if (status == 'waiting')
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      border: Border(
-                        top: BorderSide(color: Color(0xFFFFCDD2)),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _messageController,
-                            decoration: InputDecoration(
-                              hintText: 'メッセージを入力...',
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(4),
-                                borderSide: const BorderSide(color: Color(0xFFFFCDD2), width: 1.5),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(4),
-                                borderSide: const BorderSide(color: Color(0xFFFFCDD2), width: 1.5),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(4),
-                                borderSide: const BorderSide(color: Color(0xFFE91E8C), width: 2),
-                              ),
-                              filled: true,
-                              fillColor: const Color(0xFFF8BBD0),
+                            const Text(
+                              '：',
+                              style: TextStyle(color: Color(0xFF9E7B8A)),
                             ),
-                            maxLines: null,
-                            textInputAction: TextInputAction.send,
-                            onSubmitted: (_) => _sendMessage(),
-                          ),
+                            Text(
+                              choiceText,
+                              style: const TextStyle(
+                                color: Color(0xFF2D1B33),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE91E8C),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: const Color(0xFFAD1461), width: 1.5),
-                          ),
-                          child: IconButton(
-                            icon: const Icon(Icons.send_rounded, color: Colors.white),
-                            onPressed: _sendMessage,
-                          ),
-                        ),
-                      ],
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              if (!isLast)
+                const Divider(
+                  color: Color(0xFFFFCDD2),
+                  height: 1,
+                  indent: 14,
+                  endIndent: 14,
+                ),
+            ],
+          );
+        }),
+      ],
+    );
+  }
+
+  //通常チャットの吹き出しを構築する関数
+  Widget _buildChatBubble(
+    BuildContext context,
+    MessageModel message,
+    String? currentUid,
+  ) {
+    final isMe = message.uid == currentUid;
+    final nameSnapshot = ref.watch(userNameProvider(message.uid)).value;
+    final name = (nameSnapshot == null || nameSnapshot.isEmpty)
+        ? ''
+        : nameSnapshot;
+    final avatarUrl = ref.watch(userAvatarProvider(message.uid)).value ?? '';
+
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isMe) ...[
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: const Color(0xFFFCE4EC),
+              backgroundImage: avatarUrl.isNotEmpty
+                  ? NetworkImage(avatarUrl)
+                  : null,
+              child: avatarUrl.isEmpty
+                  ? const Icon(Icons.person, size: 16, color: Color(0xFF9E7B8A))
+                  : null,
+            ),
+            const SizedBox(width: 8),
+          ],
+          Column(
+            crossAxisAlignment: isMe
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
+            children: [
+              if (!isMe && name.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 2),
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF9E7B8A),
                     ),
                   ),
+                ),
+              Container(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.65,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: isMe
+                      ? const Color(0xFFE91E8C)
+                      : const Color(0xFFF8BBD0),
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(4),
+                    topRight: const Radius.circular(4),
+                    bottomLeft: Radius.circular(isMe ? 4 : 0),
+                    bottomRight: Radius.circular(isMe ? 0 : 4),
+                  ),
+                  border: Border.all(
+                    color: isMe
+                        ? const Color(0xFFAD1461)
+                        : const Color(0xFFFFCDD2),
+                    width: 1.5,
+                  ),
+                ),
+                child: Text(
+                  message.text,
+                  style: TextStyle(
+                    color: isMe ? Colors.white : const Color(0xFF2D1B33),
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  //ゲーム結果発表パネルを構築する関数
+  Widget _buildResultPanel(GameState gameState, String? currentUid) {
+    // 自分以外の全員とのマッチング率を計算する
+    final matchResults = gameState.activeMembers
+        .where((uid) => uid != currentUid)
+        .map((uid) {
+          final sortedUids = [currentUid!, uid]..sort();
+          final key = '${sortedUids[0]}_${sortedUids[1]}';
+          final score = gameState.scores[key] ?? 0;
+          final total = gameState.totalQuestions;
+          final percent = (score / total * 100).round();
+          return MapEntry(uid, percent);
+        })
+        .toList();
+
+    // 一番マッチング率が高い相手を採用する
+    final topMatch = matchResults.isEmpty
+        ? null
+        : matchResults.reduce((a, b) => a.value >= b.value ? a : b);
+    final topPercent = topMatch?.value ?? 0;
+    final topName = topMatch == null
+        ? ''
+        : (ref.watch(userNameProvider(topMatch.key)).value ?? '...');
+
+    // マッチング率に応じてフェアリーのコメントを変える
+    final String fairyComment;
+    if (topMatch == null) {
+      fairyComment = '結果が出たよ！';
+    } else if (topPercent >= _kGreatMatchPercent) {
+      fairyComment = '$topNameさんとは$topPercent%！\nすごくぴったりだね！';
+    } else if (topPercent >= _kGoodMatchPercent) {
+      fairyComment = '$topNameさんとは$topPercent%！\nなかなかいい感じだね！';
+    } else if (topPercent >= _kOkMatchPercent) {
+      fairyComment = '$topNameさんとは$topPercent%！\nまあまあの結果だね！';
+    } else {
+      fairyComment = '$topNameさんとは$topPercent%！\n個性が出た結果だね！';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Color(0xFFFCE4EC),
+        border: Border(bottom: BorderSide(color: Color(0xFFE91E8C), width: 2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            '🎉 結果発表！',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2D1B33),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+
+          // フェアリーのセリフウィンドウ
+          Image.asset('assets/images/fairy.png', height: 96),
+          const SizedBox(height: 4),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: const Color(0xFFE91E8C), width: 2),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x33E91E8C),
+                  offset: Offset(3, 3),
+                  blurRadius: 0,
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Text(
+              fairyComment,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF2D1B33),
+                height: 1.6,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // 全員とのマッチング率を表示
+          ...gameState.activeMembers.where((uid) => uid != currentUid).map((
+            uid,
+          ) {
+            final sortedUids = [currentUid!, uid]..sort();
+            final key = '${sortedUids[0]}_${sortedUids[1]}';
+            final score = gameState.scores[key] ?? 0;
+            final total = gameState.totalQuestions;
+            final percent = (score / total * 100).round();
+            final name = ref.watch(userNameProvider(uid)).value ?? '...';
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: Color(0xFF2D1B33),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '$percent%',
+                        style: TextStyle(
+                          color: percent >= _kGoodMatchPercent
+                              ? const Color(0xFF4CAF50)
+                              : const Color(0xFF9E7B8A),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+
+                  // プログレスバー
+                  LinearProgressIndicator(
+                    value: percent / 100,
+                    backgroundColor: const Color(0xFFF8BBD0),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      percent >= _kGoodMatchPercent
+                          ? const Color(0xFF4CAF50)
+                          : const Color(0xFFE91E8C),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              if (currentUid == null) return;
+              ref
+                  .read(gameNotifierProvider.notifier)
+                  .closeResult(
+                    widget.roomId,
+                    currentUid,
+                    gameState.activeMembers,
+                  );
+            },
+            child: const Text('結果を閉じる'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  //メッセージ入力バーを構築する関数
+  Widget _buildMessageInputBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFFFCDD2))),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _messageController,
+              decoration: InputDecoration(
+                hintText: 'メッセージを入力...',
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFFFCDD2),
+                    width: 1.5,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFFFCDD2),
+                    width: 1.5,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFE91E8C),
+                    width: 2,
+                  ),
+                ),
+                filled: true,
+                fillColor: const Color(0xFFF8BBD0),
+              ),
+              maxLines: null,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _sendMessage(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFE91E8C),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: const Color(0xFFAD1461), width: 1.5),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.send_rounded, color: Colors.white),
+              onPressed: _sendMessage,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  //チャット/ゲーム画面全体のUIを構築する関数
+  @override
+  Widget build(BuildContext context) {
+    final messageState = ref.watch(messagesProvider(widget.roomId));
+    final roomState = ref.watch(currentRoomStateProvider(widget.roomId));
+    // gameState.activeMembers(Firestore)ではなくRTDBのプレゼンスを参照する
+    final activeMembers =
+        ref.watch(activeMembersProvider(widget.roomId)).value ?? [];
+
+    return roomState.when(
+      data: (room) {
+        final gameState = room.gameState;
+        final rawStatus = gameState.status;
+        final currentUid = ref.read(authProvider).currentUser?.uid;
+
+        final closedMembers = gameState.closedMembers;
+        final hasClosedResult = closedMembers.contains(currentUid);
+        final status = (rawStatus == 'result' && hasClosedResult)
+            ? 'waiting'
+            : rawStatus;
+
+        if (!_chatTutorialShown &&
+            status == 'waiting' &&
+            !_chatRoomDone &&
+            _tutorialLoaded) {
+          _chatTutorialShown = true;
+          _chatRoomDone = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            await Future.delayed(kTutorialShowDelay);
+            if (mounted) _showChatCoachMark();
+          });
+        }
+
+        return SafeArea(
+          child: Scaffold(
+            appBar: _buildAppBar(room, status, activeMembers),
+            body: Column(
+              children: [
+                if (status == 'playing')
+                  _buildQuestionPanel(gameState, currentUid, activeMembers),
+                if (status == 'waiting')
+                  _buildChatList(messageState, currentUid),
+                if (status == 'result')
+                  _buildResultPanel(gameState, currentUid),
+                if (status == 'waiting') _buildMessageInputBar(),
               ],
             ),
           ),
         );
       },
       loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Color(0xFFE91E8C))),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFFE91E8C)),
+        ),
       ),
-      error: (error, stack) => Scaffold(
-        body: Center(child: Text('ルームデータの読み込みエラー: $error')),
-      ),
+      error: (error, stack) =>
+          Scaffold(body: Center(child: Text('ルームデータの読み込みエラー: $error'))),
     );
   }
 }

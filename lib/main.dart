@@ -1,4 +1,4 @@
-import 'package:bomb_chat/screens/profile_setup_screen.dart';
+import 'package:pita_room/screens/profile_setup_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -10,28 +10,22 @@ import 'screens/email_verification_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/room_list_screen.dart';
 
+//アプリのエントリーポイント関数
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  runApp(
-    const ProviderScope(child: MyApp())
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  runApp(const ProviderScope(child: MyApp()));
 }
 
-/// 認証状態を監視し、適切な初期画面へ宣言的にルーティングを制御するルートWidget
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
-
+  //認証状態に応じて初期画面を出し分けるUIを構築する関数
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
 
     return MaterialApp(
-      //locale: DevicePreview.locale(context),
-      //builder: DevicePreview.appBuilder,
       debugShowCheckedModeBanner: false,
       title: 'ぴたルム',
       theme: ThemeData(
@@ -109,9 +103,7 @@ class MyApp extends ConsumerWidget {
           prefixIconColor: const Color(0xFF9E7B8A),
         ),
         textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFFE91E8C),
-          ),
+          style: TextButton.styleFrom(foregroundColor: const Color(0xFFE91E8C)),
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
           backgroundColor: Color(0xFFE91E8C),
@@ -126,9 +118,7 @@ class MyApp extends ConsumerWidget {
           backgroundColor: const Color(0xFF2D1B33),
           contentTextStyle: const TextStyle(color: Colors.white),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
         iconTheme: const IconThemeData(color: Color(0xFF9E7B8A)),
         dialogTheme: DialogThemeData(
@@ -139,35 +129,36 @@ class MyApp extends ConsumerWidget {
         ),
       ),
       home: authState.when(
-        data: (user){
+        data: (user) {
           if (user == null) {
             return const LoginScreen();
           }
           if (!user.emailVerified) {
             return const EmailVerificationScreen();
           }
-          // nameが設定されているか確認
-          return ref.watch(currentUserProvider).when(
-            data: (userModel) {
-              if (userModel == null || userModel.name.isEmpty) {
-                return const ProfileSetupScreen(); // 名前未設定
-              }
-              return const RoomListScreen(); // 設定済み
-            },
-            loading: () => const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, s) => const Scaffold(
-              body: Center(child: CircularProgressIndicator(color: Color(0xFFE91E8C))),
-            ),
-          );
+          return ref
+              .watch(currentUserProvider)
+              .when(
+                data: (userModel) {
+                  if (userModel == null || userModel.name.isEmpty) {
+                    return const ProfileSetupScreen();
+                  }
+                  return const RoomListScreen();
+                },
+                loading: () => const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                ),
+                error: (e, s) => const Scaffold(
+                  body: Center(
+                    child: CircularProgressIndicator(color: Color(0xFFE91E8C)),
+                  ),
+                ),
+              );
         },
-        loading: () => const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
-        error: (error, stack) => Scaffold(
-          body: Center(child: Text('認証エラーが発生しました: $error')),
-        ),
+        loading: () =>
+            const Scaffold(body: Center(child: CircularProgressIndicator())),
+        error: (error, stack) =>
+            Scaffold(body: Center(child: Text('認証エラーが発生しました: $error'))),
       ),
     );
   }

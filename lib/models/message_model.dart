@@ -1,35 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// [MessageModel] は Firestore における個々のチャットメッセージドキュメントを表します。
-///
-/// メッセージのパラメータをカプセル化することで、チャット画面でメッセージを表示する際の
-/// 型安全性を保証します。
+// Firestoreの rooms/{roomId}/messages ドキュメントに対応するモデル
 class MessageModel {
-  /// このメッセージの Firestore ドキュメント ID。
   final String id;
-
-  /// メッセージのテキスト内容。
   final String text;
-
-  /// 送信者の Firebase Authentication UID。
   final String uid;
-
-  /// 送信者のメールアドレス
   final String email;
-
-  /// 名前（表示名として使用）
   final String name;
-
-  /// メッセージが送信された日時。
   final DateTime? createdAt;
 
-  /// メッセージの種別。'chat'=通常チャット、'game_summary'=ゲームサマリー
+  // 'chat'(通常チャット) または 'game_session'(ゲーム結果)
   final String type;
 
-  /// game_session用：全ラウンドのデータ（name, answer, correctVotes, incorrectVotes）
+  // type: 'game_session' の場合のみ使用する各問題の回答履歴
   final List<Map<String, dynamic>> rounds;
-
-  // フィールドに追加
   final Map<String, int> scores;
 
   const MessageModel({
@@ -44,9 +28,7 @@ class MessageModel {
     required this.scores,
   });
 
-  /// Firestore の [DocumentSnapshot] から [MessageModel] を生成するファクトリコンストラクタ。
-  ///
-  /// 安全なマッピングにより、必須フィールドの欠落や異なるタイムスタンプ型によるパースエラーを防ぎます。
+  //FirestoreのドキュメントからMessageModelを作る関数
   factory MessageModel.fromDocument(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>?;
     if (data == null) {
@@ -55,9 +37,7 @@ class MessageModel {
 
     final timestamp = data['createdAt'] as Timestamp?;
     final scoresRaw = data['scores'] as Map<String, dynamic>? ?? {};
-    final scores = scoresRaw.map(
-      (key, value) => MapEntry(key, value as int),
-    );
+    final scores = scoresRaw.map((key, value) => MapEntry(key, value as int));
 
     return MessageModel(
       id: doc.id,
@@ -74,7 +54,7 @@ class MessageModel {
     );
   }
 
-  /// [MessageModel] を Firestore の書き込み操作用の Map に変換します。
+  //Firestore書き込み用のMapに変換する関数
   Map<String, dynamic> toMap() {
     return {
       'text': text,
@@ -83,7 +63,9 @@ class MessageModel {
       'name': name,
       'type': type,
       'rounds': rounds,
-      'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
+      'createdAt': createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp(),
       'scores': scores,
     };
   }

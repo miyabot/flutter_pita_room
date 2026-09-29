@@ -7,55 +7,56 @@ class EmailVerificationScreen extends ConsumerStatefulWidget {
   const EmailVerificationScreen({super.key});
 
   @override
-  ConsumerState<EmailVerificationScreen> createState() => _EmailVerificationScreenState();
+  ConsumerState<EmailVerificationScreen> createState() =>
+      _EmailVerificationScreenState();
 }
 
-class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScreen> {
+class _EmailVerificationScreenState
+    extends ConsumerState<EmailVerificationScreen> {
   bool _isChecking = false;
   bool _isResending = false;
 
-  // 「確認しました」→ Firebaseのユーザー情報を再読み込みして emailVerified を確認
+  //メール確認済みかどうかを再取得して確認する関数
   Future<void> _checkVerified() async {
     setState(() => _isChecking = true);
     try {
-      // reload() でサーバーから最新の認証状態を取得
       await ref.read(authProvider).currentUser?.reload();
       await ref.read(authProvider).currentUser?.getIdToken(true);
-      final isVerified = ref.read(authProvider).currentUser?.emailVerified ?? false;
+      final isVerified =
+          ref.read(authProvider).currentUser?.emailVerified ?? false;
 
       if (!isVerified && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('まだ確認が完了していません。メールのリンクをタップしてください。')),
         );
       }
-      // 認証済みなら main.dart のルーティングが自動で切り替わる
-      // （authStateProvider が更新されるため）
     } finally {
       if (mounted) setState(() => _isChecking = false);
     }
   }
 
-  // 確認メールを再送信
+  //確認メールを再送信する関数
   Future<void> _resendEmail() async {
     setState(() => _isResending = true);
     try {
       await ref.read(authProvider).currentUser?.sendEmailVerification();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('確認メールを再送信しました')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('確認メールを再送信しました')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('送信失敗：$e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('送信失敗：$e')));
       }
     } finally {
       if (mounted) setState(() => _isResending = false);
     }
   }
 
+  //メール確認待ち画面のUIを構築する関数
   @override
   Widget build(BuildContext context) {
     final email = ref.read(authProvider).currentUser?.email ?? '';
@@ -68,22 +69,36 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('📧', style: TextStyle(fontSize: 64), textAlign: TextAlign.center),
+              const Text(
+                '📧',
+                style: TextStyle(fontSize: 64),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 24),
               const Text(
                 'メールを確認してください',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D1B33)),
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D1B33),
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               Text(
                 '$email\nに確認メールを送信しました。\nメール内のリンクをタップしてから\n下のボタンを押してください。',
-                style: const TextStyle(fontSize: 14, color: Color(0xFF9E7B8A), height: 1.7),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF9E7B8A),
+                  height: 1.7,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 40),
               if (_isChecking)
-                const Center(child: CircularProgressIndicator(color: Color(0xFFE91E8C)))
+                const Center(
+                  child: CircularProgressIndicator(color: Color(0xFFE91E8C)),
+                )
               else
                 ElevatedButton(
                   onPressed: _checkVerified,
@@ -91,7 +106,9 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                 ),
               const SizedBox(height: 12),
               if (_isResending)
-                const Center(child: CircularProgressIndicator(color: Color(0xFFE91E8C)))
+                const Center(
+                  child: CircularProgressIndicator(color: Color(0xFFE91E8C)),
+                )
               else
                 OutlinedButton(
                   onPressed: _resendEmail,

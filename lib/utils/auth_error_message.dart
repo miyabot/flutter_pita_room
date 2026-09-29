@@ -1,3 +1,4 @@
+//FirebaseAuthのエラーコードを日本語メッセージに変換する関数
 String authErrorMessage(String code) {
   switch (code) {
     case 'user-not-found':

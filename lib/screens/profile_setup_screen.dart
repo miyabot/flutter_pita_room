@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
+import '../utils/constants.dart';
 
 class ProfileSetupScreen extends ConsumerStatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -13,12 +14,14 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _nameController = TextEditingController();
   bool _isLoading = false;
 
+  //画面破棄時にコントローラーを解放する関数
   @override
   void dispose() {
     _nameController.dispose();
     super.dispose();
   }
 
+  //表示名を保存する関数
   Future<void> _saveName() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
@@ -30,15 +33,16 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('エラー: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('エラー: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  //表示名設定画面のUIを構築する関数
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,7 +72,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               ),
               const SizedBox(height: 48),
               TextField(
-                maxLength: 10,
+                maxLength: kDisplayNameMaxLength,
                 controller: _nameController,
                 decoration: const InputDecoration(
                   labelText: '表示名',

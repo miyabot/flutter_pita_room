@@ -1,12 +1,19 @@
-import 'package:bomb_chat/providers.dart';
-import 'package:bomb_chat/utils/app_links.dart';
-import 'package:bomb_chat/utils/auth_error_message.dart';
+import 'package:pita_room/providers.dart';
+import 'package:pita_room/utils/app_links.dart';
+import 'package:pita_room/utils/auth_error_message.dart';
+import 'package:pita_room/utils/constants.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+//アバター画像のリサイズ後のサイズ
+const _kAvatarImageSize = 512.0;
+
+//アバター画像の圧縮品質(0〜100)
+const _kAvatarImageQuality = 80;
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -16,23 +23,18 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  bool _isEditing   = false;
+  bool _isEditing = false;
   bool _isUploading = false;
-  bool _isDeleting  = false;
+  bool _isDeleting = false;
   final _nameController = TextEditingController();
 
-  /// アカウント削除：パスワード確認ダイアログ → 削除実行
+  //アカウント削除の確認からパスワード再認証、削除実行までを行う関数
   Future<void> _showDeleteDialog() async {
-    final passwordController = TextEditingController();
-
-    // ① 確認ダイアログ
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('アカウントを削除'),
-        content: const Text(
-          'アカウントを削除すると、すべてのデータが失われます。\nこの操作は取り消せません。',
-        ),
+        content: const Text('アカウントを削除すると、すべてのデータが失われます。\nこの操作は取り消せません。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -49,7 +51,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (confirmed != true) return;
     if (!mounted) return;
 
-    // ② パスワード確認ダイアログ（再認証に必要）
+    // 再認証に必要なパスワードを確認する
     String enteredPassword = '';
     bool passwordVisible = false;
     final passwordConfirmed = await showDialog<bool>(
@@ -64,8 +66,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               labelText: 'パスワード',
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
-                icon: Icon(passwordVisible ? Icons.visibility_off : Icons.visibility),
-                onPressed: () => setDialogState(() => passwordVisible = !passwordVisible),
+                icon: Icon(
+                  passwordVisible ? Icons.visibility_off : Icons.visibility,
+                ),
+                onPressed: () =>
+                    setDialogState(() => passwordVisible = !passwordVisible),
               ),
             ),
             onChanged: (value) => enteredPassword = value,
@@ -86,12 +91,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (passwordConfirmed != true || enteredPassword.isEmpty) return;
     if (!mounted) return;
 
-    // ③ 削除実行
     setState(() => _isDeleting = true);
     try {
-      await ref.read(authNotifierProvider.notifier).deleteAccount(enteredPassword);
-      // 削除完了後にルートへ戻す
-      // （currentUserProvider が先に null になって「データなし」が映るのを防ぐ）
+      await ref
+          .read(authNotifierProvider.notifier)
+          .deleteAccount(enteredPassword);
+      // currentUserProviderがnullになって「データなし」の画面が一瞬映る前にルートへ戻す
       if (mounted) {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
@@ -99,17 +104,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (!mounted) return;
       // invalid-credential はログイン画面用のメッセージだが、
       // ここではパスワードしか入力していないので専用メッセージに上書き
-      final message = (e.code == 'invalid-credential' || e.code == 'wrong-password')
+      final message =
+          (e.code == 'invalid-credential' || e.code == 'wrong-password')
           ? 'パスワードが間違っています'
           : authErrorMessage(e.code);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _isDeleting = false);
     }
   }
 
+  //プロフィール画面のUIを構築する関数
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -142,33 +149,40 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           child: CircleAvatar(
                             radius: 48,
                             backgroundColor: const Color(0xFFFCE4EC),
-                            backgroundImage: userModel.avatarUrl.isNotEmpty ?
-                                              NetworkImage(userModel.avatarUrl) : null,
+                            backgroundImage: userModel.avatarUrl.isNotEmpty
+                                ? NetworkImage(userModel.avatarUrl)
+                                : null,
                             child: _isUploading
-                              ? const CircularProgressIndicator(
-                                  color: Color(0xFFE91E8C),
-                                  strokeWidth: 2,
-                                )
-                              : userModel.avatarUrl.isEmpty
-                                  ? const Icon(Icons.person, size: 52, color: Color(0xFF9E7B8A))
-                                  : null,
+                                ? const CircularProgressIndicator(
+                                    color: Color(0xFFE91E8C),
+                                    strokeWidth: 2,
+                                  )
+                                : userModel.avatarUrl.isEmpty
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 52,
+                                    color: Color(0xFF9E7B8A),
+                                  )
+                                : null,
                           ),
                         ),
                         Positioned(
                           bottom: 0,
-                          right:0,
-                          child:GestureDetector(
-                            onTap: ()async{
+                          right: 0,
+                          child: GestureDetector(
+                            onTap: () async {
                               final picker = ImagePicker();
                               final image = await picker.pickImage(
                                 source: ImageSource.gallery,
-                                maxWidth: 512,
-                                maxHeight: 512,
-                                imageQuality: 80
+                                maxWidth: _kAvatarImageSize,
+                                maxHeight: _kAvatarImageSize,
+                                imageQuality: _kAvatarImageQuality,
                               );
-                              if(image == null) return;
+                              if (image == null) return;
                               setState(() => _isUploading = true);
-                              await ref.read(authNotifierProvider.notifier).uploadAvatar(image.path);
+                              await ref
+                                  .read(authNotifierProvider.notifier)
+                                  .uploadAvatar(image.path);
                               if (mounted) setState(() => _isUploading = false);
                             },
                             child: Container(
@@ -176,12 +190,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               decoration: BoxDecoration(
                                 color: Color(0xFFE91E8C),
                                 borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: Color(0xFFAD1461), width: 1.5),
+                                border: Border.all(
+                                  color: Color(0xFFAD1461),
+                                  width: 1.5,
+                                ),
                               ),
-                              child: Icon(Icons.camera_alt,size: 18,color: Colors.white)
-                            )
-                          )
-                        )
+                              child: Icon(
+                                Icons.camera_alt,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -194,7 +215,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ? SizedBox(
                                 width: 200,
                                 child: TextField(
-                                  maxLength: 10,
+                                  maxLength: kDisplayNameMaxLength,
                                   controller: _nameController,
                                   autofocus: true,
                                   decoration: const InputDecoration(
@@ -248,7 +269,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFFFFCDD2), width: 1.5),
+                        border: Border.all(
+                          color: const Color(0xFFFFCDD2),
+                          width: 1.5,
+                        ),
                         boxShadow: const [
                           BoxShadow(
                             color: Color(0x33E91E8C),
@@ -308,18 +332,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         TextButton(
-                          onPressed: () => launchUrl(Uri.parse(kPrivacyPolicyUrl)),
+                          onPressed: () =>
+                              launchUrl(Uri.parse(kPrivacyPolicyUrl)),
                           child: const Text(
                             'プライバシーポリシー',
-                            style: TextStyle(fontSize: 12, color: Color(0xFFAD5D7A)),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFFAD5D7A),
+                            ),
                           ),
                         ),
-                        const Text('・', style: TextStyle(color: Color(0xFFAD5D7A))),
+                        const Text(
+                          '・',
+                          style: TextStyle(color: Color(0xFFAD5D7A)),
+                        ),
                         TextButton(
-                          onPressed: () => launchUrl(Uri.parse(kTermsOfServiceUrl)),
+                          onPressed: () =>
+                              launchUrl(Uri.parse(kTermsOfServiceUrl)),
                           child: const Text(
                             '利用規約',
-                            style: TextStyle(fontSize: 12, color: Color(0xFFAD5D7A)),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFFAD5D7A),
+                            ),
                           ),
                         ),
                       ],
@@ -335,7 +370,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     else
                       OutlinedButton.icon(
                         onPressed: _showDeleteDialog,
-                        icon: const Icon(Icons.delete_forever, color: Colors.red),
+                        icon: const Icon(
+                          Icons.delete_forever,
+                          color: Colors.red,
+                        ),
                         label: const Text(
                           'アカウントを削除',
                           style: TextStyle(color: Colors.red),
