@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
-import '../providers.dart';
 import '../data/questions.dart';
 import '../models/message_model.dart';
 import '../models/room_model.dart';
 import '../utils/constants.dart';
+import '../viewmodels/auth_viewmodel.dart';
+import '../viewmodels/chat_viewmodel.dart';
+import '../viewmodels/room_viewmodel.dart';
 import 'invite_screen.dart';
 
 //カードの展開/折りたたみアニメーションの長さ
@@ -45,7 +46,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    _currentUid = ref.read(authProvider).currentUser?.uid;
+    _currentUid = ref.read(authNotifierProvider.notifier).currentUid;
     _gameNotifier = ref.read(gameNotifierProvider.notifier);
     _loadTutorialStatus();
 
@@ -68,21 +69,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   //チュートリアルを表示済みかFirestoreから取得する関数
   Future<void> _loadTutorialStatus() async {
-    final uid = ref.read(authProvider).currentUser?.uid;
-    if (uid == null) return;
-    final query = await ref
-        .read(firestoreProvider)
-        .collection('users')
-        .where('uid', isEqualTo: uid)
-        .get();
-    if (!mounted) return;
-    final tutorialMap = query.docs.isEmpty
-        ? null
-        : query.docs.first.data()['tutorial'];
+    final done = await ref
+        .read(authNotifierProvider.notifier)
+        .loadTutorialDone('chatRoom');
+    if (done == null || !mounted) return;
     setState(() {
-      if (tutorialMap is Map) {
-        _chatRoomDone = tutorialMap['chatRoom'] == true;
-      }
+      _chatRoomDone = done;
       _tutorialLoaded = true;
     });
   }
@@ -91,15 +83,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void _showChatCoachMark() {
     TutorialCoachMark(
       onFinish: () async {
-        final uid = ref.read(authProvider).currentUser?.uid;
-        if (uid == null) return;
-        final query = await ref
-            .read(firestoreProvider)
-            .collection('users')
-            .where('uid', isEqualTo: uid)
-            .get();
-        if (query.docs.isEmpty) return;
-        await query.docs.first.reference.update({'tutorial.chatRoom': true});
+        await ref
+            .read(authNotifierProvider.notifier)
+            .markTutorialDone('chatRoom');
       },
       targets: [
         TargetFocus(
@@ -203,21 +189,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       alignSkip: Alignment.topLeft,
       opacityShadow: 0.85,
       onSkip: () {
-        final uid = ref.read(authProvider).currentUser?.uid;
-        if (uid != null) {
-          ref
-              .read(firestoreProvider)
-              .collection('users')
-              .where('uid', isEqualTo: uid)
-              .get()
-              .then((query) {
-                if (query.docs.isNotEmpty) {
-                  query.docs.first.reference.update({
-                    'tutorial.chatRoom': true,
-                  });
-                }
-              });
-        }
+        ref.read(authNotifierProvider.notifier).markTutorialDone('chatRoom');
         return true;
       },
     ).show(context: context);
@@ -228,24 +200,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    final user = ref.read(authProvider).currentUser;
-    if (user == null) return;
+    if (ref.read(authNotifierProvider.notifier).currentUid == null) return;
 
     _messageController.clear();
 
     try {
       await ref
-          .read(firestoreProvider)
-          .collection('rooms')
-          .doc(widget.roomId)
-          .collection('messages')
-          .add({
-            'text': text,
-            'uid': user.uid,
-            'email': user.email,
-            'type': 'chat',
-            'createdAt': FieldValue.serverTimestamp(),
-          });
+          .read(chatNotifierProvider.notifier)
+          .sendMessage(widget.roomId, text);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -324,7 +286,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         break;
 
       case 'logout':
-        await ref.read(authProvider).signOut();
+        await ref.read(authNotifierProvider.notifier).signOut();
         if (context.mounted) {
           Navigator.of(context).popUntil((route) => route.isFirst);
         }
@@ -1133,7 +1095,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       data: (room) {
         final gameState = room.gameState;
         final rawStatus = gameState.status;
-        final currentUid = ref.read(authProvider).currentUser?.uid;
+        final currentUid = ref.read(authNotifierProvider.notifier).currentUid;
 
         final closedMembers = gameState.closedMembers;
         final hasClosedResult = closedMembers.contains(currentUid);

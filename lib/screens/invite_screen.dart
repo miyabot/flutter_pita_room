@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../providers.dart';
+import '../viewmodels/room_viewmodel.dart';
 import '../utils/constants.dart';
 
 class InviteScreen extends ConsumerStatefulWidget {

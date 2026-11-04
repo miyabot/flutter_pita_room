@@ -4,8 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
-import '../providers.dart';
 import '../utils/constants.dart';
+import '../viewmodels/auth_viewmodel.dart';
+import '../viewmodels/room_viewmodel.dart';
 import 'chat_screen.dart';
 import 'create_room_screen.dart';
 
@@ -33,15 +34,9 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
         onFinished: () async {
           Navigator.pop(context);
           _showCoachMark();
-          final uid = ref.read(authProvider).currentUser?.uid;
-          if (uid == null) return;
-          final query = await ref
-              .read(firestoreProvider)
-              .collection('users')
-              .where('uid', isEqualTo: uid)
-              .get();
-          if (query.docs.isEmpty) return;
-          await query.docs.first.reference.update({'tutorial.roomList': true});
+          await ref
+              .read(authNotifierProvider.notifier)
+              .markTutorialDone('roomList');
         },
       ),
     );
@@ -145,21 +140,12 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
 
   //チュートリアルを表示済みかFirestoreから取得する関数
   Future<void> _loadTutorialStatus() async {
-    final uid = ref.read(authProvider).currentUser?.uid;
-    if (uid == null) return;
-    final query = await ref
-        .read(firestoreProvider)
-        .collection('users')
-        .where('uid', isEqualTo: uid)
-        .get();
-    if (!mounted) return;
-    final tutorialMap = query.docs.isEmpty
-        ? null
-        : query.docs.first.data()['tutorial'];
+    final done = await ref
+        .read(authNotifierProvider.notifier)
+        .loadTutorialDone('roomList');
+    if (done == null || !mounted) return;
     setState(() {
-      if (tutorialMap is Map) {
-        _roomListDone = tutorialMap['roomList'] == true;
-      }
+      _roomListDone = done;
       _tutorialLoaded = true;
     });
   }
@@ -200,7 +186,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                 icon: const Icon(Icons.logout),
                 tooltip: 'ログアウト',
                 onPressed: () async {
-                  await ref.read(authProvider).signOut();
+                  await ref.read(authNotifierProvider.notifier).signOut();
                 },
               ),
             ],

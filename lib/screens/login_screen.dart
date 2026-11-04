@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../providers.dart';
+import '../viewmodels/auth_viewmodel.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -63,7 +63,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (confirmed != true || resetEmail.isEmpty) return;
 
     try {
-      await ref.read(authProvider).sendPasswordResetEmail(email: resetEmail);
+      await ref
+          .read(authNotifierProvider.notifier)
+          .sendPasswordReset(resetEmail);
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -80,15 +82,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   //メールアドレスとパスワードでログインする関数
   Future<void> _login() async {
+    //入力欄のフォーカスを外して、キーボードを閉じる
     FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
 
     try {
       await ref
-          .read(authProvider)
-          .signInWithEmailAndPassword(
-            email: _emailController.text.trim(),
-            password: _passwordController.text.trim(),
+          .read(authNotifierProvider.notifier)
+          .signIn(
+            _emailController.text.trim(),
+            _passwordController.text.trim(),
           );
     } on FirebaseAuthException catch (e) {
       final message = authErrorMessage(e.code);

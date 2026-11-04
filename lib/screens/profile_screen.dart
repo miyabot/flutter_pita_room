@@ -1,7 +1,7 @@
-import 'package:pita_room/providers.dart';
 import 'package:pita_room/utils/app_links.dart';
 import 'package:pita_room/utils/auth_error_message.dart';
 import 'package:pita_room/utils/constants.dart';
+import 'package:pita_room/viewmodels/auth_viewmodel.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

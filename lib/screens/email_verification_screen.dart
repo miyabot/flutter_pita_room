@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../providers.dart';
+import '../viewmodels/auth_viewmodel.dart';
 
 class EmailVerificationScreen extends ConsumerStatefulWidget {
   const EmailVerificationScreen({super.key});
@@ -20,10 +20,9 @@ class _EmailVerificationScreenState
   Future<void> _checkVerified() async {
     setState(() => _isChecking = true);
     try {
-      await ref.read(authProvider).currentUser?.reload();
-      await ref.read(authProvider).currentUser?.getIdToken(true);
-      final isVerified =
-          ref.read(authProvider).currentUser?.emailVerified ?? false;
+      final isVerified = await ref
+          .read(authNotifierProvider.notifier)
+          .refreshEmailVerified();
 
       if (!isVerified && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -39,7 +38,7 @@ class _EmailVerificationScreenState
   Future<void> _resendEmail() async {
     setState(() => _isResending = true);
     try {
-      await ref.read(authProvider).currentUser?.sendEmailVerification();
+      await ref.read(authNotifierProvider.notifier).resendVerificationEmail();
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -59,7 +58,7 @@ class _EmailVerificationScreenState
   //メール確認待ち画面のUIを構築する関数
   @override
   Widget build(BuildContext context) {
-    final email = ref.read(authProvider).currentUser?.email ?? '';
+    final email = ref.read(authNotifierProvider.notifier).currentEmail;
 
     return Scaffold(
       body: SafeArea(
@@ -117,7 +116,7 @@ class _EmailVerificationScreenState
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () async {
-                  await ref.read(authProvider).signOut();
+                  await ref.read(authNotifierProvider.notifier).signOut();
                 },
                 child: const Text('ログアウト'),
               ),

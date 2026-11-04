@@ -5,13 +5,14 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'firebase_options.dart';
-import 'providers.dart';
 import 'screens/email_verification_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/room_list_screen.dart';
+import 'viewmodels/auth_viewmodel.dart';
 
 //アプリのエントリーポイント関数
 void main() async {
+  //runappよりも前にbindingを初期化
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const ProviderScope(child: MyApp()));
@@ -128,11 +129,14 @@ class MyApp extends ConsumerWidget {
           ),
         ),
       ),
+
+      //ログイン状態に応じて、最初に表示する画面を自動で切り替え
       home: authState.when(
         data: (user) {
           if (user == null) {
             return const LoginScreen();
           }
+          //メール認証が終わってるかチェック
           if (!user.emailVerified) {
             return const EmailVerificationScreen();
           }

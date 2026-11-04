@@ -8,3 +8,6 @@ const kInviteCodeLength = 6;
 
 //チュートリアル表示前に待つ時間(画面遷移アニメーションが落ち着くのを待つ)
 const kTutorialShowDelay = Duration(milliseconds: 400);
+
+//ゲームを開始できる最小人数
+const kMinPlayersToStart = 2;
