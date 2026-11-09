@@ -2,10 +2,8 @@
 
 > 友達と「共通点」を探して、相性が"ぴたっ"と分かるチャット＆診断ゲームアプリ
 
-<!-- TODO: サービスの雰囲気が伝わる画像(スクリーンショットやGIF)を docs/images/ に置いて差し替えてください -->
 <p align="center">
-  <img src="assets/images/icon.png" alt="ぴたルムのアイコン" width="160">
-  <img src="assets/images/fairy.png" alt="ぴたルムのフェアリー" width="160">
+  <img src="assets/images/feature.png" alt="ぴたルムのフィーチャー画像">
 </p>
 
 <!-- 例: <img src="docs/images/room-list.png" width="240"> <img src="docs/images/game.png" width="240"> <img src="docs/images/result.png" width="240"> -->
@@ -15,16 +13,11 @@
 ## サービスURL
 
 <!-- TODO: 公開しているURL(Webアプリ / ストアのURLなど)を記入 -->
-- アプリ: 準備中
+- [GooglePlay](https://play.google.com/store/apps/details?id=com.miyamoto.pitarumu&pcampaignid=web_share)
 
 関連ページ
 - [プライバシーポリシー](https://sites.google.com/st.kobedenshi.ac.jp/pitarm)
 - [利用規約](https://sites.google.com/st.kobedenshi.ac.jp/pitarm-kiyaku)
-
-## 関連記事
-
-<!-- TODO: Qiita / Zenn / note などの記事URLを記入 -->
-- 準備中
 
 ---
 
@@ -35,7 +28,7 @@
 1. ルームを作って、招待IDで友達を呼ぶ
 2. ルームにいるメンバー全員で「ゲーム」を開始する
 3. 「好きな食べ物は？」などの4択の質問に、みんなが同時に答える(全5問)
-4. 回答が一致するとペアのスコアが加算され、結果発表で**2人ずつの一致率**がわかる
+4. 回答が一致するとペアのスコアが加算され、結果発表で**2人の相性**がわかる
 5. 結果はチャットに残り、あとから見返せる
 
 普段のチャットも同じルーム内で行えるので、「雑談 → ゲームで盛り上がる → また雑談」という流れが自然に続きます。
@@ -175,25 +168,12 @@ flowchart LR
     Client -. "リンク" .-> Sites["Google Sites<br/>プライバシーポリシー / 利用規約"]
 ```
 
-## セットアップ
-
-```bash
-git clone https://github.com/miyabot/flutter_bomb_chat_app.git
-cd flutter_bomb_chat_app
-flutter pub get
-flutter run
-```
-
-Firebase プロジェクトは FlutterFire CLI で設定済みです(`lib/firebase_options.dart`)。自分の Firebase プロジェクトで動かす場合は `flutterfire configure` を実行し、Authentication(メール/パスワード)・Firestore・Realtime Database・Storage を有効化して、`firestore.rules` を反映してください。
-
----
 
 ## 今後の展望
 
 <!-- TODO: 実際の計画に合わせて編集してください。以下はコードから想定した案です -->
-- [ ] 問題の追加・カテゴリ選択(ルームごとにカテゴリを選べるようにする)
-- [ ] 問題データを Firestore で管理し、アプリ更新なしで追加できるようにする
-- [ ] プッシュ通知(ゲーム開始・メッセージ受信のお知らせ)
-- [ ] 画像・スタンプの送信
-- [ ] 相性ランキングや過去の結果の振り返り機能
-- [ ] テストコードの拡充(現在は `test/widget_test.dart` のみ)
+- 問題の追加・カテゴリ選択(ルームごとにカテゴリを選べるようにする)
+- 問題データを Firestore で管理し、アプリ更新なしで追加できるようにする
+- プッシュ通知(ゲーム開始・メッセージ受信のお知らせ)
+- 画像・スタンプの送信
+- 相性ランキングや過去の結果の振り返り機能
